@@ -1,4 +1,3 @@
-import { requireNativeModule } from 'expo';
-// This call loads the native module object from the JSI.
+import { requireNativeModule } from 'expo-modules-core';
 export default requireNativeModule('Finvu');
 //# sourceMappingURL=FinvuModule.js.map
