@@ -13,47 +13,104 @@ const emitter = new EventEmitter<FinvuEvents>(FinvuModule ?? NativeModulesProxy.
 
 export async function initializeWith(config: FinvuConfig) {
   try {
-    console.log('Result inside before calling initializeWith');
+    console.log('Initializing Finvu with config:', config);
     await FinvuModule.initializeWith(config);
-    console.log('Initialized successfully');
+    console.log('Finvu initialized successfully');
   } catch (e) {
-    console.error(e);
+    console.error('Initialization failed:', e);
   }
 }
 
 export async function connect() {
   try {
-    console.log('Result inside before calling connect');
+    console.log('Connecting...');
     const result = await FinvuModule.connect();
-    console.log('Result inside: ' + result);
+    console.log('Connected successfully:', result);
     return result;
   } catch (e) {
-    console.error(e);
+    console.error('Connection failed:', e);
   }
 }
 
 export async function loginWithUsernameOrMobileNumber(username: string, mobileNumber: string, consentHandleId: string) {
   try {
-    console.log('Calling login');
+    console.log('Logging in...');
     const result = await FinvuModule.loginWithUsernameOrMobileNumber(username, mobileNumber, consentHandleId);
-    console.log('Logged Request: ' + result.reference);
+    console.log('Login success, reference:', result.reference);
     return result;
   } catch (e) {
-    console.error(e);
+    console.error('Login failed:', e);
   }
 }
 
 export async function verifyLoginOtp(otp: string, otpReference: string) {
   try {
-    console.log('Calling verify');
+    console.log('Verifying OTP...');
     const result = await FinvuModule.verifyLoginOtp(otp, otpReference);
-    console.log('Logged In with userId : ' + result.userId);
+    console.log('OTP verified, userId:', result.userId);
     return result;
   } catch (e) {
-    console.error(e);
+    console.error('OTP verification failed:', e);
   }
 }
 
+export async function fipsAllFIPOptions() {
+  try {
+    return await FinvuModule.fipsAllFIPOptions();
+  } catch (e) {
+    console.error('Fetching FIPs failed:', e);
+  }
+}
+
+export async function fetchLinkedAccounts() {
+  try {
+    return await FinvuModule.fetchLinkedAccounts();
+  } catch (e) {
+    console.error('Fetching linked accounts failed:', e);
+  }
+}
+
+export async function discoverAccounts(fipId: string, fiTypes: string[], mobileNumber: string) {
+  try {
+    return await FinvuModule.discoverAccounts(fipId, fiTypes, mobileNumber);
+  } catch (e) {
+    console.error('Discovering accounts failed:', e);
+  }
+}
+
+export async function linkAccounts(finvuAccounts: any[], finvuFipDetails: any) {
+  try {
+    return await FinvuModule.linkAccounts(finvuAccounts, finvuFipDetails);
+  } catch (e) {
+    console.error('Linking accounts failed:', e);
+  }
+}
+
+export async function confirmAccountLinking(referenceNumber: string, otp: string) {
+  try {
+    return await FinvuModule.confirmAccountLinking(referenceNumber, otp);
+  } catch (e) {
+    console.error('Confirming account linking failed:', e);
+  }
+}
+
+export async function approveConsentRequest(consentDetails: any, finvuLinkedAccounts: any[]) {
+  try {
+    return await FinvuModule.approveConsentRequest(consentDetails, finvuLinkedAccounts);
+  } catch (e) {
+    console.error('Approving consent failed:', e);
+  }
+}
+
+export async function denyConsentRequest(consentRequestDetailInfo: any) {
+  try {
+    return await FinvuModule.denyConsentRequest(consentRequestDetailInfo);
+  } catch (e) {
+    console.error('Denying consent failed:', e);
+  }
+}
+
+// Event listeners
 export function addChangeListener(listener: (event: any) => void): EventSubscription {
   return emitter.addListener('onChange', listener);
 }
