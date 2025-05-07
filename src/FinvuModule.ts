@@ -1,5 +1,18 @@
 import { requireNativeModule } from 'expo-modules-core';
+import type { FinvuConfig } from './Finvu.types';
 
-// It loads the native module object from the JSI or falls back to
-// the bridge module (from NativeModulesProxy) if the remote debugger is on.
-export default requireNativeModule('Finvu');
+export interface FinvuModuleType {
+  initializeWith(config: FinvuConfig): Promise<void>;
+  connect(): Promise<string>;
+  loginWithUsernameOrMobileNumber(username: string, mobileNumber: string, consentHandleId: string): Promise<any>;
+  verifyLoginOtp(otp: string, otpReference: string): Promise<any>;
+  fipsAllFIPOptions(): Promise<any>;
+  discoverAccounts(fipId: string, fiTypes: string[], mobileNumber: string): Promise<any>;
+  fetchLinkedAccounts(): Promise<any>;
+  linkAccounts(accounts: any[], fipDetails: any): Promise<any>;
+  confirmAccountLinking(referenceNumber: string, otp: string): Promise<any>;
+  approveConsentRequest(consentDetails: any, linkedAccounts: any[]): Promise<any>;
+  denyConsentRequest(consentRequestDetailInfo: any): Promise<any>;
+}
+
+export default requireNativeModule<FinvuModuleType>('Finvu');

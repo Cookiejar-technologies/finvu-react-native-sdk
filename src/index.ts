@@ -9,7 +9,9 @@ type FinvuEvents = {
   onChange: any; // Replace `any` with the actual type of the event payload if known
 };
 
-const emitter = new EventEmitter<FinvuEvents>(FinvuModule ?? NativeModulesProxy.Finvu);
+const emitter = new EventEmitter<FinvuEvents>(
+  (FinvuModule as any).addListener ? (FinvuModule as any) : NativeModulesProxy.Finvu
+);
 
 export async function initializeWith(config: FinvuConfig) {
   try {
@@ -29,7 +31,8 @@ export async function connect() {
     return result;
   } catch (e) {
     console.error('Connection failed:', e);
-  }
+    return undefined;
+    }
 }
 
 export async function loginWithUsernameOrMobileNumber(username: string, mobileNumber: string, consentHandleId: string) {
@@ -40,6 +43,7 @@ export async function loginWithUsernameOrMobileNumber(username: string, mobileNu
     return result;
   } catch (e) {
     console.error('Login failed:', e);
+    return undefined;
   }
 }
 
@@ -51,6 +55,7 @@ export async function verifyLoginOtp(otp: string, otpReference: string) {
     return result;
   } catch (e) {
     console.error('OTP verification failed:', e);
+    return undefined;
   }
 }
 
@@ -59,6 +64,7 @@ export async function fipsAllFIPOptions() {
     return await FinvuModule.fipsAllFIPOptions();
   } catch (e) {
     console.error('Fetching FIPs failed:', e);
+    return undefined;
   }
 }
 
@@ -67,6 +73,7 @@ export async function fetchLinkedAccounts() {
     return await FinvuModule.fetchLinkedAccounts();
   } catch (e) {
     console.error('Fetching linked accounts failed:', e);
+    return undefined;
   }
 }
 
@@ -75,6 +82,7 @@ export async function discoverAccounts(fipId: string, fiTypes: string[], mobileN
     return await FinvuModule.discoverAccounts(fipId, fiTypes, mobileNumber);
   } catch (e) {
     console.error('Discovering accounts failed:', e);
+    return undefined;
   }
 }
 
@@ -83,6 +91,7 @@ export async function linkAccounts(finvuAccounts: any[], finvuFipDetails: any) {
     return await FinvuModule.linkAccounts(finvuAccounts, finvuFipDetails);
   } catch (e) {
     console.error('Linking accounts failed:', e);
+    return undefined;
   }
 }
 
@@ -91,6 +100,7 @@ export async function confirmAccountLinking(referenceNumber: string, otp: string
     return await FinvuModule.confirmAccountLinking(referenceNumber, otp);
   } catch (e) {
     console.error('Confirming account linking failed:', e);
+    return undefined;
   }
 }
 
@@ -99,6 +109,7 @@ export async function approveConsentRequest(consentDetails: any, finvuLinkedAcco
     return await FinvuModule.approveConsentRequest(consentDetails, finvuLinkedAccounts);
   } catch (e) {
     console.error('Approving consent failed:', e);
+    return undefined;
   }
 }
 
@@ -107,6 +118,7 @@ export async function denyConsentRequest(consentRequestDetailInfo: any) {
     return await FinvuModule.denyConsentRequest(consentRequestDetailInfo);
   } catch (e) {
     console.error('Denying consent failed:', e);
+    return undefined;
   }
 }
 
