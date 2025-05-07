@@ -87,7 +87,28 @@ public class FinvuModule: Module {
             }
         }
 
-                                  
+        AsyncFunction("discoverAccounts") { (fipId: String, fiTypes: [String], mobileNumber: String, promise: Promise) in
+            let identifiers: [TypeIdentifierInfo] = [
+            TypeIdentifierInfo("STRONG", "MOBILE", mobileNumber),
+            TypeIdentifierInfo("WEAK", "PAN", "")
+            ]
+            sdkInstance.discoverAccounts(fipId, fiTypes, identifiers) { result, error in
+                DispatchQueue.main.async {
+                    if let error = error as FinvuException? {
+                        promise.reject(error.code, error.message)
+                    } else if let result = result {
+                        let response = result.getOrNull()
+                        let json = try! JSONSerialization.data(withJSONObject: response!, options: [])
+                        let jsonString = String(data: json, encoding: .utf8)!
+                        promise.resolve(jsonString)
+                    } else {
+                        // Handle case where there is no result and no error
+                        promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    }
+                }
+            }
+        }
+
         AsyncFunction("verifyLoginOtp") { (otp: String, otpReference: String, promise: Promise) in
             sdkInstance.verifyLoginOtp(otp: otp, otpReference: otpReference) { result, error in
                 DispatchQueue.main.async {

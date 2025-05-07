@@ -3,11 +3,17 @@ package expo.modules.finvu
 import com.finvu.android.FinvuManager
 import com.finvu.android.publicInterface.FinvuErrorCode
 import com.finvu.android.publicInterface.FinvuException
+import com.finvu.android.publicInterface.TypeIdentifierInfo
+import com.finvu.android.publicInterface.DiscoveredAccount
+import com.finvu.android.publicInterface.FipDetails
+import com.finvu.android.publicInterface.ConsentDetail
+import com.finvu.android.publicInterface.LinkedAccountDetails
 import com.finvu.android.utils.FinvuConfig
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.net.URL
+import com.google.gson.Gson
 
 class FinvuModule : Module() {
 
@@ -76,6 +82,37 @@ class FinvuModule : Module() {
             }
           }
       } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("CONNECT_ERROR", e)
+      }
+    }
+
+    AsyncFunction("discoverAccounts") {fipId: String, fiTypes: List<String>, mobileNumber: String, promise: Promise ->
+      try {
+        println("discoverAccounts started $fipId $fiTypes $mobileNumber")
+        val identifiers = mutableListOf(
+          TypeIdentifierInfo(
+            "STRONG",
+            "MOBILE",
+            mobileNumber
+          )
+        )
+        sdkInstance.discoverAccounts(fipId, fiTypes, identifiers) { result ->
+          println("discoverAccounts called $fipId $fiTypes $identifiers")
+          if (result.isSuccess) {
+            val response = result.getOrNull()
+            println("discoverAccounts result $response")
+            val json = Gson().toJson(response) // Convert object to JSON string
+            promise.resolve(json) // Send JSON string to JavaScript
+          } else {
+            val exception = result.exceptionOrNull() as? FinvuException
+            val errorCode = exception?.code ?: "UNKNOWN_ERROR"
+            promise.reject(errorCode.toString(), exception?.message,null)
+            throw RuntimeException(errorCode.toString())
+          }
+        }
+      } catch (e: Exception) {
+        println("discoverAccounts error $e")
         e.printStackTrace()
         throw RuntimeException("CONNECT_ERROR", e)
       }

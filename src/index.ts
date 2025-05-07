@@ -54,6 +54,18 @@ export async function verifyLoginOtp(otp: string, otpReference: string) {
   }
 }
 
+export async function discoverAccounts(fipId: string, fiTypes: string[], mobileNumber: string) {
+  try {
+    const result = await FinvuModule.discoverAccounts(fipId, fiTypes, mobileNumber);
+    console.log('Discover result : ' + result);
+    // Parse the JSON response from native code
+    return result;
+  } catch (e) {
+    console.error('Discovering accounts failed:', e);
+    throw e; // Re-throw the error so it can be caught by the caller
+  }
+}
+
 export function addChangeListener(listener: (event: any) => void): EventSubscription {
   return emitter.addListener('onChange', listener);
 }
