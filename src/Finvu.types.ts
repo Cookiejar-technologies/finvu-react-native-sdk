@@ -174,3 +174,24 @@ export interface FipDetails {
   fipId: string;
   typeIdentifiers: FipFiTypeIdentifier[];
 }
+
+
+/**
+ * FIP information interface matching Kotlin data class
+ */
+export interface FIPInfo {
+  fipId: string;
+  productName?: string;
+  fipFiTypes: string[];
+  fipFsr?: string;
+  productDesc?: string;
+  productIconUri?: string;
+  enabled: boolean;
+}
+
+/**
+ * Response for all FIP options matching Kotlin data class
+ */
+export interface FipsAllFIPOptionsResponse {
+  searchOptions: FIPInfo[];
+}
