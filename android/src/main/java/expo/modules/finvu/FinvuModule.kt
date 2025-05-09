@@ -274,54 +274,18 @@ class FinvuModule : Module() {
       }
     }
 
-    AsyncFunction("approveConsentRequest") { consentDetailsMap: Map<String, Any>, finvuLinkedAccountsMap: List<Map<String, Any>>, promise: Promise ->
+  AsyncFunction("approveConsentRequest") { consentDetailsMap: Map<String, Any>, finvuLinkedAccountsMap: List<Map<String, Any>>, promise: Promise ->
       try {
-          val gson = Gson()
-          
-          // Debug the input
-          println("ConsentDetailsMap: $consentDetailsMap")
-          println("FinvuLinkedAccountsMap: $finvuLinkedAccountsMap")
-          
           // Convert maps to JSON strings
-          val jsonConsentDetails = gson.toJson(consentDetailsMap)
-          val jsonFinvuLinkedAccounts = gson.toJson(finvuLinkedAccountsMap)
-          
-          println("ConsentDetails JSON: $jsonConsentDetails")
-          println("LinkedAccounts JSON: $jsonFinvuLinkedAccounts")
-          
-          // Try to parse the data
-          val consentDetails = try {
-              gson.fromJson(jsonConsentDetails, ConsentDetail::class.java)
-          } catch (e: Exception) {
-              println("Error parsing ConsentDetail: ${e.message}")
-              e.printStackTrace()
-              throw e
-          }
-          
-          // Custom parsing for linked accounts to ensure all required fields
-          val linkedAccounts = finvuLinkedAccountsMap.map { account ->
-              try {
-                  LinkedAccountDetails(
-                      fipId = account["fipId"] as? String ?: "",
-                      fipName = account["fipName"] as? String ?: "",
-                      accountReferenceNumber = account["accountReferenceNumber"] as? String 
-                          ?: account["accountReference"] as? String ?: "",
-                      maskedAccountNumber = account["maskedAccountNumber"] as? String 
-                          ?: account["maskedAccNumber"] as? String ?: "",
-                      fiType = account["fiType"] as? String ?: "",
-                      accountType = account["accountType"] as? String ?: "",
-                      linkReferenceNumber = account["linkReferenceNumber"] as? String ?: ""
-                  )
-              } catch (e: Exception) {
-                  println("Error creating LinkedAccountDetails: ${e.message}")
-                  e.printStackTrace()
-                  throw e
-              }
-          }
-          
-          sdkInstance.approveConsentRequest(consentDetails, linkedAccounts) { result ->
+          val jsonConsentDetails = Gson().toJson(consentDetailsMap)
+          val jsonFinvuLinkedAccounts = Gson().toJson(finvuLinkedAccountsMap)
+
+          val ConsentDetails = Gson().fromJson(jsonConsentDetails, ConsentDetail::class.java)
+          val LinkedAccounts = Gson().fromJson(jsonFinvuLinkedAccounts, Array<LinkedAccountDetails>::class.java).toList()
+
+          sdkInstance.approveConsentRequest(ConsentDetails, LinkedAccounts) { result ->
               if (result.isSuccess) {
-                  val json = gson.toJson(result.getOrNull())
+                  val json = Gson().toJson(result.getOrNull())
                   promise.resolve(json)
               } else {
                   val exception = result.exceptionOrNull() as? FinvuException
@@ -331,7 +295,7 @@ class FinvuModule : Module() {
           }
       } catch (e: Exception) {
           e.printStackTrace()
-          promise.reject("CONSENT_APPROVAL_ERROR", e.message, null)
+          promise.reject("CONNECT_ERROR", e.message, null)
       }
   }
 
