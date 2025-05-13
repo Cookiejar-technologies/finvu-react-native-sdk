@@ -128,7 +128,7 @@ public class FinvuModule: Module {
                     }
 
                     let resultDict: [String: Any] = [
-                        "accounts": accountsArray
+                        "discoveredAccounts": accountsArray
                     ]
 
                     do {
@@ -339,7 +339,7 @@ public class FinvuModule: Module {
                         return [
                             "fipId": fipInfo.fipId,
                             "productName": fipInfo.productName ?? "",
-                            "fipFitypes": fipInfo.fipFitypes,
+                            "fipFiTypes": fipInfo.fipFitypes,
                             "fipFsr": fipInfo.fipFsr ?? "",
                             "productDesc": fipInfo.productDesc ?? "",
                             "productIconUri": fipInfo.productIconUri ?? "",
