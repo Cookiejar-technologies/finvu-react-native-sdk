@@ -45,6 +45,31 @@ export async function connect() {
     return handleResult(FinvuModule.connect(), 'Connection failed');
 }
 /**
+ * Disconnect from the Finvu service
+ */
+export async function disconnect() {
+    return handleResult(FinvuModule.disconnect(), 'Failed to disconnect from finvu');
+}
+/**
+ * Checks if the user is currently connected to the Finvu service.
+ *
+ * @returns A `Result` object containing a boolean indicating connection status.
+ * Returns `true` if connected, `false` otherwise.
+ */
+export async function isConnected() {
+    return handleResult(FinvuModule.isConnected(), 'Failed to fetch connection status from Finvu.');
+}
+/**
+ * Checks if there is an active session with the Finvu service.
+ *
+ * @returns A `Result` object containing a boolean:
+ * - `true` if a session exists,
+ * - `false` if no session is found.
+ */
+export async function hasSession() {
+    return handleResult(FinvuModule.hasSession(), 'Unable to determine if a Finvu session exists.');
+}
+/**
  * Login with username or mobile number
  * @param username Username (email format)
  * @param mobileNumber Mobile number

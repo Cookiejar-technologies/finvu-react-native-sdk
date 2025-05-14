@@ -20,6 +20,25 @@ export declare function initializeWith(config: FinvuConfig): Promise<Result<stri
  */
 export declare function connect(): Promise<Result<void>>;
 /**
+ * Disconnect from the Finvu service
+ */
+export declare function disconnect(): Promise<Result<void>>;
+/**
+ * Checks if the user is currently connected to the Finvu service.
+ *
+ * @returns A `Result` object containing a boolean indicating connection status.
+ * Returns `true` if connected, `false` otherwise.
+ */
+export declare function isConnected(): Promise<Result<boolean>>;
+/**
+ * Checks if there is an active session with the Finvu service.
+ *
+ * @returns A `Result` object containing a boolean:
+ * - `true` if a session exists,
+ * - `false` if no session is found.
+ */
+export declare function hasSession(): Promise<Result<boolean>>;
+/**
  * Login with username or mobile number
  * @param username Username (email format)
  * @param mobileNumber Mobile number

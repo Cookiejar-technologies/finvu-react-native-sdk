@@ -1,7 +1,7 @@
 {
-  "name": "finvu",
+  "name": "finvu-react-native-sdk",
   "version": "0.1.0",
-  "description": "Finvu expo module to integrate Finvu AA micro app.",
+  "description": "Finvu react native module to integrate Finvu AA micro app.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
@@ -21,13 +21,13 @@
     "finvu",
     "Finvu"
   ],
-  "repository": "https://github.com/pranad-waghmare/finvu",
+  "repository": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk",
   "bugs": {
-    "url": "https://github.com/pranad-waghmare/finvu/issues"
+    "url": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk/issues"
   },
   "author": "Pranad Waghmare <pranadw@cookiejar.co.in> (https://github.com/pranad-waghmare)",
   "license": "MIT",
-  "homepage": "https://github.com/pranad-waghmare/finvu#readme",
+  "homepage": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk#readme",
   "dependencies": {},
   "devDependencies": {
     "@types/react": "~19.0.0",

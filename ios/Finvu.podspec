@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
     :tvos => '15.1'
   }
   s.swift_version  = '5.4'
-  s.source         = { git: 'https://github.com/pranad-waghmare/finvu' }
+  s.source         = { git: 'https://github.com/Cookiejar-technologies/finvu-react-native-sdk' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

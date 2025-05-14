@@ -37,6 +37,9 @@ public class FinvuModule: Module {
 
         Function("initializeWith", initializeWith)
         AsyncFunction("connect", connect)
+        AsyncFunction("disconnect", disconnect)
+        AsyncFunction("isConnected", isConnected)
+        AsyncFunction("hasSession", hasSession)
         AsyncFunction("loginWithUsernameOrMobileNumber", loginWithUsernameOrMobileNumber)
         AsyncFunction("discoverAccounts", discoverAccounts)
         AsyncFunction("verifyLoginOtp", verifyLoginOtp)
@@ -84,6 +87,47 @@ public class FinvuModule: Module {
                     promise.resolve(["status": "Connected successfully"])
                 }
             }
+        }
+    }
+
+    private func disconnect(promise: Promise) {
+        DispatchQueue.main.async {
+            do {
+                self.sdkInstance.disconnect()
+                self.sendEvent("onConnectionStatusChange", ["status": "Disconnected successfully"])
+                promise.resolve(["status": "Disconnected successfully"])
+            } catch let error as NSError {
+                let errorCode : String = mapErrorCode(error)
+                self.sendEvent("onConnectionStatusChange", ["status": errorCode])
+                promise.reject(errorCode, error.localizedDescription)
+            } catch {
+                self.sendEvent("onConnectionStatusChange", ["status": "UNKNOWN_ERROR"])
+                promise.reject("UNKNOWN_ERROR", "An unknown error occurred while disconnecting.")
+            }
+        }
+    }
+
+    private func isConnected(promise: Promise) {
+        do {
+            let status = self.sdkInstance.isConnected()
+            promise.resolve(["connected": status])
+        } catch let error as NSError {
+            let errorCode : String = mapErrorCode(error)
+            promise.reject(errorCode, error.localizedDescription)
+        } catch {
+            promise.reject("UNKNOWN_ERROR", "An unknown error occurred while checking connection status.")
+        }
+    }
+    
+    private func hasSession(promise: Promise) {
+        do {
+            let hasSession = self.sdkInstance.hasSession()
+            promise.resolve(["hasSession": hasSession])
+        } catch let error as NSError {
+            let errorCode : String = mapErrorCode(error)
+            promise.reject(errorCode, error.localizedDescription)
+        } catch {
+            promise.reject("UNKNOWN_ERROR", "An unknown error occurred while checking session.")
         }
     }
 
