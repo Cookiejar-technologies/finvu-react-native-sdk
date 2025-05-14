@@ -1,32 +1,6 @@
 import ExpoModulesCore
 import FinvuSDK
 
-extension NSObject {
-    func toDictionary() -> [String: Any] {
-        var dict = [String: Any]()
-        let mirror = Mirror(reflecting: self)
-        
-        for child in mirror.children {
-            guard let key = child.label else { continue }
-            
-            let value = child.value
-            
-            if let objArray = value as? [NSObject] {
-                dict[key] = objArray.map { $0.toDictionary() }
-            } else if let obj = value as? NSObject, !(value is NSNumber) && !(value is NSString) && !(value is NSArray) {
-                dict[key] = obj.toDictionary()
-            } else if let date = value as? Date {
-                let formatter = ISO8601DateFormatter()
-                dict[key] = formatter.string(from: date)
-            } else {
-                dict[key] = value
-            }
-        }
-        
-        return dict
-    }
-}
-
 func mapErrorCode(_ error: NSError) -> String {
     switch error.code {
     case 1001:
@@ -154,7 +128,7 @@ public class FinvuModule: Module {
                     }
 
                     let resultDict: [String: Any] = [
-                        "accounts": accountsArray
+                        "discoveredAccounts": accountsArray
                     ]
 
                     do {
@@ -194,12 +168,37 @@ public class FinvuModule: Module {
         sdkInstance.fetchFIPDetails(fipId: fipId) { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    var typeIdentifiersArray: [[String: Any]] = []
+
+                    for typeIdentifier in result.typeIdentifiers {
+                        var identifiersArray: [[String: String]] = []
+
+                        for identifier in typeIdentifier.identifiers {
+                            let identifierDict: [String: String] = [
+                                "category": identifier.category,
+                                "type": identifier.type
+                            ]
+                            identifiersArray.append(identifierDict)
+                        }
+
+                        let typeIdentifierDict: [String: Any] = [
+                            "fiType": typeIdentifier.fiType,
+                            "identifiers": identifiersArray
+                        ]
+
+                        typeIdentifiersArray.append(typeIdentifierDict)
+                    }
+
+                    let resultDict: [String: Any] = [
+                        "fipId": result.fipId,
+                        "typeIdentifiers": typeIdentifiersArray
+                    ]
+
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -216,12 +215,20 @@ public class FinvuModule: Module {
         sdkInstance.getEntityInfo(entityId: entityId, entityType: entityType) { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    // Inline dictionary conversion
+                    let resultDict: [String: Any] = [
+                        "entityId": result.entityId,
+                        "entityName": result.entityName,
+                        "entityIconUri": result.entityIconUri as Any,
+                        "entityLogoUri": result.entityLogoUri as Any,
+                        "entityLogoWithNameUri": result.entityLogoWithNameUri as Any
+                    ]
+                    
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -233,78 +240,75 @@ public class FinvuModule: Module {
             }
         }
     }
-    
+  
     private func getConsentRequestDetails(consentHandleId: String, promise: Promise) {
         sdkInstance.getConsentRequestDetails(consentHandleId: consentHandleId) { result, error in
-            DispatchQueue.main.async {
-                if let error = error as NSError? {
-                    let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
-                } else if let result = result {
-                    guard let detail = result.detail else {
-                        promise.reject("MISSING_CONSENT_DETAIL", "Consent detail is missing in the response.")
-                        return
+                DispatchQueue.main.async {
+                    if let error = error as NSError? {
+                        let errorCode: String = mapErrorCode(error)
+                        promise.reject(errorCode, error.localizedDescription)
+                    } else if let result = result {
+                        let detail = result.detail
+                        let formatter = ISO8601DateFormatter()
+
+                        let financialUserDict: [String: Any] = [
+                            "id": detail.financialInformationUser.id,
+                            "name": detail.financialInformationUser.name
+                        ]
+
+                        let purposeInfoDict: [String: Any] = [
+                            "code": detail.consentPurposeInfo.code,
+                            "text": detail.consentPurposeInfo.text
+                        ]
+
+                        let dateTimeRangeDict: [String: Any] = [
+                            "from": formatter.string(from : detail.consentDateTimeRange.from),
+                            "to": formatter.string(from : detail.consentDateTimeRange.to)
+                        ]
+
+                        let dataTimeRangeDict: [String: Any] = [
+                            "from": formatter.string(from : detail.dataDateTimeRange.from),
+                            "to": formatter.string(from : detail.dataDateTimeRange.to)
+                        ]
+
+                        let dataLifePeriodDict: [String: Any] = [
+                            "unit": detail.consentDataLifePeriod.unit,
+                            "value": detail.consentDataLifePeriod.value
+                        ]
+
+                        let dataFrequencyDict: [String: Any] = [
+                            "unit": detail.consentDataFrequency.unit,
+                            "value": detail.consentDataFrequency.value
+                        ]
+
+                        let detailDict: [String: Any] = [
+                            "consentId": detail.consentId ?? "",
+                            "consentHandle": detail.consentHandle,
+                            "statusLastUpdateTimestamp": detail.statusLastUpdateTimestamp.map { formatter.string(from: $0) } ?? "",
+                            "financialInformationUser": financialUserDict,
+                            "consentPurposeInfo": purposeInfoDict,
+                            "consentDisplayDescriptions": detail.consentDisplayDescriptions,
+                            "consentDateTimeRange": dateTimeRangeDict,
+                            "dataDateTimeRange": dataTimeRangeDict,
+                            "consentDataLifePeriod": dataLifePeriodDict,
+                            "consentDataFrequency": dataFrequencyDict,
+                            "fiTypes": detail.fiTypes ?? []
+                        ]
+
+                        let resultDict: [String: Any] = [
+                            "consentDetail": detailDict
+                        ]
+
+                        do {
+                            let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
+                            let jsonString = String(data: jsonData, encoding: .utf8)!
+                            promise.resolve(jsonString)
+                        } catch {
+                            promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
+                        }
+                    } else {
+                        promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
                     }
-
-                    let financialUserDict: [String: Any] = [
-                        "id": detail.financialInformationUser.id,
-                        "name": detail.financialInformationUser.name
-                    ]
-
-                    let purposeInfoDict: [String: Any] = [
-                        "code": detail.consentPurposeInfo.code,
-                        "category": detail.consentPurposeInfo.category,
-                        "text": detail.consentPurposeInfo.text
-                    ]
-
-                    let dateTimeRangeDict: [String: Any] = [
-                        "from": detail.consentDateTimeRange.from.iso8601String(),
-                        "to": detail.consentDateTimeRange.to.iso8601String()
-                    ]
-
-                    let dataTimeRangeDict: [String: Any] = [
-                        "from": detail.dataDateTimeRange.from.iso8601String(),
-                        "to": detail.dataDateTimeRange.to.iso8601String()
-                    ]
-
-                    let dataLifePeriodDict: [String: Any] = [
-                        "unit": detail.consentDataLifePeriod.unit,
-                        "value": detail.consentDataLifePeriod.value
-                    ]
-
-                    let dataFrequencyDict: [String: Any] = [
-                        "unit": detail.consentDataFrequency.unit,
-                        "value": detail.consentDataFrequency.value
-                    ]
-
-                    let detailDict: [String: Any] = [
-                        "consentId": detail.consentId ?? "",
-                        "consentHandle": detail.consentHandle,
-                        "statusLastUpdateTimestamp": detail.statusLastUpdateTimestamp?.iso8601String() ?? "",
-                        "financialInformationUser": financialUserDict,
-                        "consentPurposeInfo": purposeInfoDict,
-                        "consentDisplayDescriptions": detail.consentDisplayDescriptions,
-                        "consentDateTimeRange": dateTimeRangeDict,
-                        "dataDateTimeRange": dataTimeRangeDict,
-                        "consentDataLifePeriod": dataLifePeriodDict,
-                        "consentDataFrequency": dataFrequencyDict,
-                        "fiTypes": detail.fiTypes ?? []
-                    ]
-
-                    let resultDict: [String: Any] = [
-                        "detail": detailDict
-                    ]
-
-                    do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
-                        let jsonString = String(data: jsonData, encoding: .utf8)!
-                        promise.resolve(jsonString)
-                    } catch {
-                        promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
-                    }
-                } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
-                }
             }
         }
     }
@@ -327,12 +331,28 @@ public class FinvuModule: Module {
         sdkInstance.fipsAllFIPOptions { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    // Convert FIPSearchResponse to Dictionary
+                    let searchOptionsArray = result.searchOptions.map { fipInfo in
+                        return [
+                            "fipId": fipInfo.fipId,
+                            "productName": fipInfo.productName ?? "",
+                            "fipFiTypes": fipInfo.fipFitypes,
+                            "fipFsr": fipInfo.fipFsr ?? "",
+                            "productDesc": fipInfo.productDesc ?? "",
+                            "productIconUri": fipInfo.productIconUri ?? "",
+                            "enabled": fipInfo.enabled
+                        ] as [String: Any]
+                    }
+
+                    let responseDict: [String: Any] = [
+                        "searchOptions": searchOptionsArray
+                    ]
+
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: responseDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -390,7 +410,7 @@ public class FinvuModule: Module {
     }
 
     private func linkAccounts(finvuAccountsMap: [[String: Any]], finvuFipDetailsMap: [String: Any], promise: Promise) {
-        // Create discovered account objects from the dictionary
+        // Parse DiscoveredAccountInfo array
         let discoveredAccounts = finvuAccountsMap.map { accountDict -> DiscoveredAccountInfo in
             return DiscoveredAccountInfo(
                 accountType: accountDict["accountType"] as? String ?? "",
@@ -399,22 +419,45 @@ public class FinvuModule: Module {
                 fiType: accountDict["fiType"] as? String ?? ""
             )
         }
-        
-        // Create FIP details object
-        let fipDetails = FIPDetails(
-            fipId: finvuFipDetailsMap["fipId"] as? String ?? "",
-            typeIdenifiers: [] // Empty array since we don't have this data from React Native
-        )
-        
+
+        var parsedTypeIdentifiers: [FIPFiTypeIdentifier] = []
+        if let typeIdentifiersArray = finvuFipDetailsMap["typeIdentifiers"] as? [[String: Any]] {
+            parsedTypeIdentifiers = typeIdentifiersArray.compactMap { item -> FIPFiTypeIdentifier? in
+                guard
+                    let fiType = item["fiType"] as? String,
+                    let identifiers = item["identifiers"] as? [[String: Any]]
+                else {
+                    return nil
+                }
+
+                let parsedIdentifiers = identifiers.compactMap { idDict -> TypeIdentifier? in
+                    guard
+                        let category = idDict["category"] as? String,
+                        let type = idDict["type"] as? String
+                    else {
+                        return nil
+                    }
+                    return TypeIdentifier(category: category, type: type)
+                }
+
+                return FIPFiTypeIdentifier(fiType: fiType, identifiers: parsedIdentifiers)
+            }
+        }
+
+        let fipDetails =  FIPDetails(fipId: finvuFipDetailsMap["fipId"] as? String ?? "", typeIdenifiers: parsedTypeIdentifiers)
+        // Call SDK
         sdkInstance.linkAccounts(fipDetails: fipDetails, accounts: discoveredAccounts) { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    let resultDict: [String: Any] = [
+                        "referenceNumber": result.referenceNumber
+                    ]
+
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: resultDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -427,17 +470,30 @@ public class FinvuModule: Module {
         }
     }
 
-    
     private func confirmAccountLinking(referenceNumber: String, otp: String, promise: Promise) {
-        sdkInstance.confirmAccountLinking(linkingReference: AccountLinkingRequestReference(referenceNumber: referenceNumber), otp: otp) { result, error in
+        let linkingReference = AccountLinkingRequestReference(referenceNumber: referenceNumber)
+        
+        sdkInstance.confirmAccountLinking(linkingReference: linkingReference, otp: otp) { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    let linkedAccountsArray = result.linkedAccounts.map { account in
+                        return [
+                            "customerAddress": account.customerAddress,
+                            "linkReferenceNumber": account.linkReferenceNumber,
+                            "accountReferenceNumber": account.accountReferenceNumber,
+                            "status": account.status
+                        ] as [String: Any]
+                    }
+
+                    let responseDict: [String: Any] = [
+                        "linkedAccounts": linkedAccountsArray
+                    ]
+
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: responseDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -511,8 +567,19 @@ public class FinvuModule: Module {
                     let errorCode : String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    let consentsArray = result.consentsInfo?.map { consent in
+                        return [
+                            "fipId": consent.fipId ?? "",
+                            "consentId": consent.consentId
+                        ]
+                    } ?? []
+
+                    let responseDict: [String: Any] = [
+                        "consentIntentId": result.consentIntentId ?? NSNull(),
+                        "consentsInfo": consentsArray
+                    ]
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: responseDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
@@ -569,8 +636,19 @@ public class FinvuModule: Module {
                     let errorCode : String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
+                    let consentsArray = result.consentsInfo?.map { consent in
+                        return [
+                            "fipId": consent.fipId ?? "",
+                            "consentId": consent.consentId
+                        ]
+                    } ?? []
+
+                    let responseDict: [String: Any] = [
+                        "consentIntentId": result.consentIntentId ?? "",
+                        "consentsInfo": consentsArray
+                    ]
                     do {
-                        let jsonData = try JSONSerialization.data(withJSONObject: result.toDictionary(), options: [])
+                        let jsonData = try JSONSerialization.data(withJSONObject: responseDict, options: [])
                         let jsonString = String(data: jsonData, encoding: .utf8)!
                         promise.resolve(jsonString)
                     } catch {
