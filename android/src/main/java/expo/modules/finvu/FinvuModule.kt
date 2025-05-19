@@ -54,6 +54,38 @@ class FinvuModule : Module() {
           throw RuntimeException(errorName)
         }
       }
+    } 
+
+    AsyncFunction("disconnect") {
+      try {
+        sdkInstance.disconnect()
+        sendEvent("onConnectionStatusChange", mapOf("status" to "Disconnected successfully"))
+      } catch (e: Exception) {
+        e.printStackTrace()
+        sendEvent("onConnectionStatusChange", mapOf("status" to "DISCONNECT_FAILED"))
+        throw RuntimeException("DISCONNECT_FAILED", e)
+      }
+    }
+    
+
+    AsyncFunction("isConnected") { promise: Promise ->
+      try {
+        val isConnected = sdkInstance.isConnected()
+        promise.resolve(isConnected)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("CONNECT_ERROR", e)
+      }
+    }
+
+    AsyncFunction("hasSession") { promise: Promise ->
+      try {
+        val hasSession = sdkInstance.hasSession();
+        promise.resolve(hasSession)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("CONNECT_ERROR", e)
+      }
     }
 
     AsyncFunction("loginWithUsernameOrMobileNumber") { username: String, mobileNumber: String, consentHandleId: String, promise: Promise ->
