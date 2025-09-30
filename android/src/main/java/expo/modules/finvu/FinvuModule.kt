@@ -3,6 +3,7 @@ package expo.modules.finvu
 import com.finvu.android.FinvuManager
 import com.finvu.android.publicInterface.*
 import com.finvu.android.utils.FinvuConfig
+import com.finvu.android.utils.FinvuSNAAuthConfig
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -12,13 +13,14 @@ class FinvuModule : Module() {
 
   data class FinvuClientConfig(
     override val finvuEndpoint: String,
-    override val certificatePins: List<String>?
+    override val certificatePins: List<String>?,
+    override val finvuSNAAuthConfig: FinvuSNAAuthConfig?
   ) : FinvuConfig
 
   private val sdkInstance: FinvuManager = FinvuManager.shared
 
   override fun definition() = ModuleDefinition {
-    Name("Finvu")
+    Name("FinvuModule")
     Constants()
 
     Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified")
@@ -29,7 +31,7 @@ class FinvuModule : Module() {
           ?: throw IllegalArgumentException("finvuEndpoint is required")
         val certificatePins = (config["certificatePins"] as? List<*>)?.map { it.toString() }
 
-        val finvuClientConfig = FinvuClientConfig(finvuEndpoint, certificatePins)
+        val finvuClientConfig = FinvuClientConfig(finvuEndpoint, certificatePins, null)
         sdkInstance.initializeWith(finvuClientConfig)
         "Initialized successfully"
       } catch (e: Exception) {

@@ -1,9 +1,17 @@
 {
   "name": "finvu-react-native-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Finvu react native module to integrate Finvu AA micro app.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "files": [
+    "build/",
+    "android/",
+    "ios/",
+    "README.md",
+    "LICENSE",
+    "expo-module.config.json"
+  ],
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -13,15 +21,30 @@
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android"
+    "open:android": "open -a \"Android Studio\" example/android",
+    "login:github": "npm login --scope=@cookiejar-technologies --registry=https://npm.pkg.github.com",
+    "publish:github": "npm publish --registry=https://npm.pkg.github.com",
+    "publish:patch": "npm version patch && npm run publish:github",
+    "publish:minor": "npm version minor && npm run publish:github",
+    "publish:major": "npm version major && npm run publish:github",
+    "prepublish": "npm run build"
   },
   "keywords": [
     "react-native",
     "expo",
     "finvu",
-    "Finvu"
+    "Finvu",
+    "account-aggregator",
+    "financial-data",
+    "open-banking"
   ],
-  "repository": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "bugs": {
     "url": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk/issues"
   },
@@ -39,5 +62,8 @@
     "expo": "*",
     "react": "*",
     "react-native": "*"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
