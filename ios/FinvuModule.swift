@@ -31,7 +31,7 @@ public class FinvuModule: Module {
     private let sdkInstance = FinvuManager.shared
 
     public func definition() -> ModuleDefinition {
-        Name("Finvu")
+        Name("FinvuModule")
         
         Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified")
 
@@ -110,7 +110,7 @@ public class FinvuModule: Module {
     private func isConnected(promise: Promise) {
         do {
             let status = self.sdkInstance.isConnected()
-            promise.resolve(["connected": status])
+            promise.resolve(status)
         } catch let error as NSError {
             let errorCode : String = mapErrorCode(error)
             promise.reject(errorCode, error.localizedDescription)
@@ -122,7 +122,7 @@ public class FinvuModule: Module {
     private func hasSession(promise: Promise) {
         do {
             let hasSession = self.sdkInstance.hasSession()
-            promise.resolve(["hasSession": hasSession])
+            promise.resolve(hasSession)
         } catch let error as NSError {
             let errorCode : String = mapErrorCode(error)
             promise.reject(errorCode, error.localizedDescription)
