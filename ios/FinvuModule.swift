@@ -20,10 +20,12 @@ func mapErrorCode(_ error: NSError) -> String {
 class FinvuClientConfig: FinvuConfig {
     var finvuEndpoint: URL
     var certificatePins: [String]?
+    var finvuSnaAuthConfig: FinvuSnaAuthConfig?
     
-    public init(finvuEndpoint: URL, certificatePins: [String]?) {
+    public init(finvuEndpoint: URL, certificatePins: [String]?, finvuSnaAuthConfig: FinvuSnaAuthConfig?) {
         self.finvuEndpoint = finvuEndpoint
         self.certificatePins = certificatePins ?? []
+        self.finvuSnaAuthConfig = finvuSnaAuthConfig
     }
 }
 
@@ -54,6 +56,19 @@ public class FinvuModule: Module {
         AsyncFunction("approveConsentRequest", approveConsentRequest)
         AsyncFunction("denyConsentRequest", denyConsentRequest)
     }
+    
+    private func getRootViewController() -> UIViewController? {
+        // For iOS 13+
+        if #available(iOS 13.0, *) {
+            let windowScene = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first
+            return windowScene?.windows.first { $0.isKeyWindow }?.rootViewController
+        } else {
+            // Fallback for earlier versions
+            return UIApplication.shared.keyWindow?.rootViewController
+        }
+    }
 
     private func initializeWith(config: [String: Any]) throws -> String {
         do {
@@ -63,7 +78,22 @@ public class FinvuModule: Module {
             }
             
             let certificatePins = (config["certificatePins"] as? [String])
-            let finvuClientConfig = FinvuClientConfig(finvuEndpoint: finvuEndpoint, certificatePins: certificatePins)
+            
+            // Parse finvuAuthSNAConfig if present
+            var finvuSnaAuthConfig: FinvuSnaAuthConfig? = nil
+            if let snaConfigDict = config["finvuAuthSNAConfig"] as? [String: Any],
+               let environmentString = snaConfigDict["environment"] as? String {
+                let environment = environmentString == "UAT" ? FinvuEnvironment.uat : FinvuEnvironment.production
+                
+                // Get the root view controller
+                guard let rootViewController = getRootViewController() else {
+                    throw NSError(domain: "FinvuModule", code: -1, userInfo: [NSLocalizedDescriptionKey: "Unable to get root view controller"])
+                }
+                
+                finvuSnaAuthConfig = FinvuSnaAuthConfig(environment: environment, viewController: rootViewController)
+            }
+            
+            let finvuClientConfig = FinvuClientConfig(finvuEndpoint: finvuEndpoint, certificatePins: certificatePins, finvuSnaAuthConfig: finvuSnaAuthConfig)
             
             sdkInstance.initializeWith(config: finvuClientConfig)
             return "Initialized successfully"
@@ -130,16 +160,33 @@ public class FinvuModule: Module {
             promise.reject("UNKNOWN_ERROR", "An unknown error occurred while checking session.")
         }
     }
-
-    private func loginWithUsernameOrMobileNumber(username: String, mobileNumber: String, consentHandleId: String, promise: Promise) {
-        sdkInstance.loginWith(username: username, mobileNumber: mobileNumber, consentHandleId: consentHandleId) { result, error in
+     
+    private func loginWithUsernameOrMobileNumber(
+        username: String,
+        mobileNumber: String,
+        consentHandleId: String,
+        promise: Promise
+    ) {
+        sdkInstance.loginWith(
+            username: username,
+            mobileNumber: mobileNumber,
+            consentHandleId: consentHandleId
+        ) { result, error in
             DispatchQueue.main.async {
                 if let error = error as NSError? {
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
                     promise.reject(errorCode, error.localizedDescription)
                 } else if let result = result {
-                    let reference = result.reference
-                    promise.resolve(["reference": reference])
+                    var response: [String: Any] = [
+                        "authType": result.authType ?? "",
+                        "reference": result.reference
+                    ]
+                    
+                    if let snaAuthToken = result.snaToken {
+                        response["snaToken"] = snaAuthToken
+                    }
+                    
+                    promise.resolve(response)
                 } else {
                     promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
                 }

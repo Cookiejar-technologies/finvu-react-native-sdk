@@ -90,7 +90,7 @@ android {
     namespace 'expo.modules.finvu.example'
     defaultConfig {
         applicationId 'expo.modules.finvu.example'
-        minSdkVersion rootProject.ext.minSdkVersion
+        minSdkVersion 25
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
@@ -150,6 +150,7 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation("com.finvu.android:sna-adapter:1.0.1")
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";

@@ -33,7 +33,9 @@ target 'finvuexample' do
 
   use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
   use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
-
+  
+  pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :branch => 'feat/UX-I246/integrate-auth-sdk-in-ios-sdk-for-sna' , :tag => '1.0.7'
+  pod 'FinvuSDKSNAAdapter', :git => 'https://github.com/Cookiejar-technologies/finvu-ios-sdk-sna-adapter.git', :branch => 'feat/UX-I246/integrate-auth-sdk-in-ios-sdk-for-sna' , :tag => '1.0.0'
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',

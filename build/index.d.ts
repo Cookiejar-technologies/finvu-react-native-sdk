@@ -1,5 +1,5 @@
 import { EventSubscription } from 'expo-modules-core';
-import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails } from './Finvu.types';
+import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse } from './Finvu.types';
 export type Result<T> = {
     isSuccess: true;
     data: T;
@@ -44,9 +44,7 @@ export declare function hasSession(): Promise<Result<boolean>>;
  * @param mobileNumber Mobile number
  * @param consentHandleId Consent handle ID
  */
-export declare function loginWithUsernameOrMobileNumber(username: string, mobileNumber: string, consentHandleId: string): Promise<Result<{
-    reference: string;
-}>>;
+export declare function loginWithUsernameOrMobileNumber(username: string, mobileNumber: string, consentHandleId: string): Promise<Result<LoginWithUsernameOrMobileNumberResponse>>;
 /**
  * Verify login OTP
  * @param otp OTP received by the user

@@ -1,13 +1,17 @@
 package expo.modules.finvu
 
+import android.app.Activity
 import com.finvu.android.FinvuManager
 import com.finvu.android.publicInterface.*
+import com.finvu.android.types.FinvuEnvironment
 import com.finvu.android.utils.FinvuConfig
 import com.finvu.android.utils.FinvuSNAAuthConfig
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 
 class FinvuModule : Module() {
 
@@ -16,6 +20,12 @@ class FinvuModule : Module() {
     override val certificatePins: List<String>?,
     override val finvuSNAAuthConfig: FinvuSNAAuthConfig?
   ) : FinvuConfig
+
+  data class FinvuSNAAuthClientConfig(
+    override val activity: Activity,
+    override val env: FinvuEnvironment,
+    override var scope: CoroutineScope
+  ) : FinvuSNAAuthConfig
 
   private val sdkInstance: FinvuManager = FinvuManager.shared
 
@@ -31,7 +41,33 @@ class FinvuModule : Module() {
           ?: throw IllegalArgumentException("finvuEndpoint is required")
         val certificatePins = (config["certificatePins"] as? List<*>)?.map { it.toString() }
 
-        val finvuClientConfig = FinvuClientConfig(finvuEndpoint, certificatePins, null)
+        // Parse finvuAuthSNAConfig if present
+        var finvuSNAAuthConfig: FinvuSNAAuthConfig? = null
+        val snaConfigMap = config["finvuAuthSNAConfig"] as? Map<String, Any>
+        if (snaConfigMap != null) {
+          val environmentString = snaConfigMap["environment"] as? String
+          if (environmentString != null) {
+            val environment = if (environmentString == "UAT") {
+              FinvuEnvironment.UAT
+            } else {
+              FinvuEnvironment.PRODUCTION
+            }
+
+            // Get current activity from appContext (available in ModuleDefinition scope)
+            val currentActivity = appContext.currentActivity
+              ?: throw IllegalStateException("No current activity available")
+
+            val scope = MainScope()
+
+            finvuSNAAuthConfig = FinvuSNAAuthClientConfig(
+              currentActivity,
+              environment,
+              scope
+            )
+          }
+        }
+
+        val finvuClientConfig = FinvuClientConfig(finvuEndpoint, certificatePins, finvuSNAAuthConfig)
         sdkInstance.initializeWith(finvuClientConfig)
         "Initialized successfully"
       } catch (e: Exception) {
@@ -94,8 +130,9 @@ class FinvuModule : Module() {
       try {
         sdkInstance.loginWithUsernameOrMobileNumber(username, mobileNumber, consentHandleId) { result ->
           if (result.isSuccess) {
-            val reference = result.getOrNull()?.reference
-            promise.resolve(mapOf("reference" to reference))
+            val loginResponse = result.getOrNull()
+            val json = Gson().toJson(loginResponse)
+            promise.resolve(json)
           } else {
             val exception = result.exceptionOrNull() as? FinvuException
             val errorCode = exception?.code ?: "UNKNOWN_ERROR"

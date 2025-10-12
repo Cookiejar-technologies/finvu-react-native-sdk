@@ -1,6 +1,6 @@
 import { EventEmitter, NativeModulesProxy, EventSubscription } from 'expo-modules-core';
 import FinvuModule from './FinvuModule';
-import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails } from './Finvu.types';
+import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse } from './Finvu.types';
 
 // Define the event types for the EventEmitter
 type FinvuEvents = {
@@ -99,7 +99,7 @@ export async function loginWithUsernameOrMobileNumber(
   username: string, 
   mobileNumber: string, 
   consentHandleId: string
-): Promise<Result<{ reference: string }>> {
+): Promise<Result<LoginWithUsernameOrMobileNumberResponse>> {
   return handleResult(
     FinvuModule.loginWithUsernameOrMobileNumber(username, mobileNumber, consentHandleId),
     'Login failed'

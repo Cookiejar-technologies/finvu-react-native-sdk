@@ -6,9 +6,25 @@ export type FinvuViewProps = {
   name: string;
 };
 
+export enum FinvuEnviornment {
+  PRODUCTION = "PRODUCTION",
+  UAT = "UAT",
+}
+
+export type FinvuAuthSNAConfig = {
+  environment: FinvuEnviornment;
+}
+
 export type FinvuConfig ={
   finvuEndpoint: string;
   certificatePins?: string[];
+  finvuAuthSNAConfig?: FinvuAuthSNAConfig;
+}
+
+export interface LoginWithUsernameOrMobileNumberResponse {
+  authType : string;
+  reference: string;
+  snaToken?: string;
 }
 
 export interface DiscoveredAccount {
