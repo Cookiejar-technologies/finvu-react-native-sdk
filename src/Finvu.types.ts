@@ -211,3 +211,80 @@ export interface FIPInfo {
 export interface FipsAllFIPOptionsResponse {
   searchOptions: FIPInfo[];
 }
+
+// Event Tracking Types
+
+/**
+ * Event Definition for custom events
+ */
+export interface EventDefinition {
+  category: string;
+  count?: number;
+  stage?: string;
+  fipId?: string;
+  fips?: string[];
+  fiTypes?: string[];
+}
+
+/**
+ * Finvu Event structure
+ */
+export interface FinvuEvent {
+  eventName: string;
+  eventCategory: string;
+  timestamp: string;
+  aaSdkVersion: string;
+  params: Record<string, any>;
+}
+
+/**
+ * Event Listener callback type
+ */
+export type FinvuEventListener = (event: FinvuEvent) => void;
+
+/**
+ * Standard SDK Event Types (matching native enum)
+ */
+export enum FinvuEventType {
+  // WebSocket Events
+  WEBSOCKET_CONNECTED = "WEBSOCKET_CONNECTED",
+  WEBSOCKET_DISCONNECTED = "WEBSOCKET_DISCONNECTED",
+  
+  // Redirection Events
+  CONSENT_REQUEST_VALID = "CONSENT_REQUEST_VALID",
+  CONSENT_REQUEST_INVALID = "CONSENT_REQUEST_INVALID",
+  
+  // Authentication Events
+  LOGIN_INITIATED = "LOGIN_INITIATED",
+  LOGIN_OTP_GENERATED = "LOGIN_OTP_GENERATED",
+  LOGIN_OTP_FAILED = "LOGIN_OTP_FAILED",
+  LOGIN_OTP_LOCKED = "LOGIN_OTP_LOCKED",
+  LOGIN_OTP_VERIFIED = "LOGIN_OTP_VERIFIED",
+  LOGIN_OTP_NOT_VERIFIED = "LOGIN_OTP_NOT_VERIFIED",
+  LOGIN_FALLBACK_INITIATED = "LOGIN_FALLBACK_INITIATED",
+  
+  // Discovery Events
+  DISCOVERY_INITIATED = "DISCOVERY_INITIATED",
+  ACCOUNTS_DISCOVERED = "ACCOUNTS_DISCOVERED",
+  DISCOVERY_FAILED = "DISCOVERY_FAILED",
+  ACCOUNTS_NOT_DISCOVERED = "ACCOUNTS_NOT_DISCOVERED",
+  
+  // Linking Events
+  LINKING_INITIATED = "LINKING_INITIATED",
+  LINKING_OTP_GENERATED = "LINKING_OTP_GENERATED",
+  LINKING_OTP_FAILED = "LINKING_OTP_FAILED",
+  LINKING_SUCCESS = "LINKING_SUCCESS",
+  LINKING_FAILURE = "LINKING_FAILURE",
+  
+  // Consent Events
+  LINKED_ACCOUNTS_SUMMARY = "LINKED_ACCOUNTS_SUMMARY",
+  CONSENT_APPROVED = "CONSENT_APPROVED",
+  CONSENT_DENIED = "CONSENT_DENIED",
+  APPROVE_CONSENT_FAILED = "APPROVE_CONSENT_FAILED",
+  CONSENT_HANDLE_FAILED = "CONSENT_HANDLE_FAILED",
+  GET_CONSENT_STATUS_FAILED = "GET_CONSENT_STATUS_FAILED",
+  
+  // Error Events
+  SESSION_ERROR = "SESSION_ERROR",
+  SESSION_FAILURE = "SESSION_FAILURE",
+}

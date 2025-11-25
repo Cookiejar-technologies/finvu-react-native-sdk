@@ -6,6 +6,8 @@ import com.finvu.android.publicInterface.*
 import com.finvu.android.types.FinvuEnvironment
 import com.finvu.android.utils.FinvuConfig
 import com.finvu.android.utils.FinvuSNAAuthConfig
+import com.finvu.android.events.EventDefinition
+import com.finvu.android.events.FinvuEventTracker
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -28,12 +30,25 @@ class FinvuModule : Module() {
   ) : FinvuSNAAuthConfig
 
   private val sdkInstance: FinvuManager = FinvuManager.shared
+  private val eventTracker: FinvuEventTracker = FinvuEventTracker.shared
+  private val eventListener = object : FinvuEventListener {
+    override fun onEvent(event: FinvuEvent) {
+      val eventMap = mapOf(
+        "eventName" to event.eventName,
+        "eventCategory" to event.eventCategory,
+        "timestamp" to event.timestamp,
+        "aaSdkVersion" to event.aaSdkVersion,
+        "params" to event.params
+      )
+      sendEvent("onEvent", eventMap)
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("FinvuModule")
     Constants()
 
-    Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified")
+    Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified", "onEvent")
 
     Function("initializeWith") { config: Map<String, Any> ->
       try {
@@ -390,6 +405,71 @@ class FinvuModule : Module() {
             e.printStackTrace()
             promise.reject("CONNECT_ERROR", e.message, null)
         }
+    }
+
+    // Event Tracking Methods
+    Function("setEventsEnabled") { enabled: Boolean ->
+      try {
+        sdkInstance.setEventsEnabled(enabled)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("SET_EVENTS_ENABLED_ERROR", e)
+      }
+    }
+
+    Function("addEventListener") {
+      try {
+        sdkInstance.addEventListener(eventListener)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("ADD_EVENT_LISTENER_ERROR", e)
+      }
+    }
+
+    Function("removeEventListener") {
+      try {
+        sdkInstance.removeEventListener(eventListener)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("REMOVE_EVENT_LISTENER_ERROR", e)
+      }
+    }
+
+    Function("registerCustomEvents") { eventsMap: Map<String, Map<String, Any?>> ->
+      try {
+        val customEvents = eventsMap.mapValues { (_, eventDefMap) ->
+          EventDefinition(
+            category = eventDefMap["category"] as? String ?: "",
+            count = (eventDefMap["count"] as? Number)?.toInt() ?: 0,
+            stage = eventDefMap["stage"] as? String,
+            fipId = eventDefMap["fipId"] as? String,
+            fips = (eventDefMap["fips"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf(),
+            fiTypes = (eventDefMap["fiTypes"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+          )
+        }
+        eventTracker.registerCustomEvents(customEvents)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("REGISTER_CUSTOM_EVENTS_ERROR", e)
+      }
+    }
+
+    Function("track") { eventName: String, params: Map<String, Any?>? ->
+      try {
+        eventTracker.track(eventName, params ?: emptyMap())
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("TRACK_EVENT_ERROR", e)
+      }
+    }
+
+    Function("registerAliases") { aliases: Map<String, String> ->
+      try {
+        eventTracker.registerAliases(aliases)
+      } catch (e: Exception) {
+        e.printStackTrace()
+        throw RuntimeException("REGISTER_ALIASES_ERROR", e)
+      }
     }
   }   
 }

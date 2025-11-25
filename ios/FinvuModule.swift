@@ -31,11 +31,40 @@ class FinvuClientConfig: FinvuConfig {
 
 public class FinvuModule: Module {
     private let sdkInstance = FinvuManager.shared
+    private let eventTracker = FinvuEventTracker.shared
+    private lazy var eventListener: FinvuEventListener = {
+        let listener = EventListener { [weak self] event in
+            guard let self = self else { return }
+            let eventDict: [String: Any] = [
+                "eventName": event.eventName,
+                "eventCategory": event.eventCategory,
+                "timestamp": event.timestamp,
+                "aaSdkVersion": event.aaSdkVersion,
+                "params": event.params
+            ]
+            self.sendEvent("onEvent", eventDict)
+        }
+        return listener
+    }()
+    
+    // Helper class to bridge FinvuEventListener protocol
+    private class EventListener: NSObject, FinvuEventListener {
+        private let callback: (FinvuEvent) -> Void
+        
+        init(callback: @escaping (FinvuEvent) -> Void) {
+            self.callback = callback
+            super.init()
+        }
+        
+        func onEvent(_ event: FinvuEvent) {
+            callback(event)
+        }
+    }
 
     public func definition() -> ModuleDefinition {
         Name("FinvuModule")
         
-        Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified")
+        Events("onConnectionStatusChange", "onLoginOtpReceived", "onLoginOtpVerified", "onEvent")
 
         Function("initializeWith", initializeWith)
         AsyncFunction("connect", connect)
@@ -55,6 +84,14 @@ public class FinvuModule: Module {
         AsyncFunction("confirmAccountLinking", confirmAccountLinking)
         AsyncFunction("approveConsentRequest", approveConsentRequest)
         AsyncFunction("denyConsentRequest", denyConsentRequest)
+        
+        // Event Tracking Methods
+        Function("setEventsEnabled", setEventsEnabled)
+        Function("addEventListener", addEventListener)
+        Function("removeEventListener", removeEventListener)
+        Function("registerCustomEvents", registerCustomEvents)
+        Function("track", track)
+        Function("registerAliases", registerAliases)
     }
     
     private func getRootViewController() -> UIViewController? {
@@ -750,5 +787,47 @@ public class FinvuModule: Module {
                 }
             }
         }
+    }
+    
+    // MARK: - Event Tracking Methods
+    
+    private func setEventsEnabled(enabled: Bool) throws {
+        sdkInstance.setEventsEnabled(enabled)
+    }
+    
+    private func addEventListener() throws {
+        sdkInstance.addEventListener(eventListener)
+    }
+    
+    private func removeEventListener() throws {
+        sdkInstance.removeEventListener(eventListener)
+    }
+    
+    private func registerCustomEvents(eventsMap: [String: [String: Any]]) throws {
+        let customEvents = eventsMap.mapValues { eventDefMap -> EventDefinition in
+            let category = eventDefMap["category"] as? String ?? ""
+            let count = (eventDefMap["count"] as? NSNumber)?.intValue ?? 0
+            let stage = eventDefMap["stage"] as? String
+            let fipId = eventDefMap["fipId"] as? String
+            let fips = eventDefMap["fips"] as? [String]
+            let fiTypes = eventDefMap["fiTypes"] as? [String]
+            
+            return EventDefinition(
+                category: category,
+                stage: stage,
+                fipId: fipId,
+                fips: fips ?? [""],
+                fiTypes: fiTypes ?? [""]
+            )
+        }
+        eventTracker.registerCustomEvents(customEvents)
+    }
+    
+    private func track(eventName: String, params: [String: Any]?) throws {
+        eventTracker.track(eventName, params: params ?? [:])
+    }
+    
+    private func registerAliases(aliases: [String: String]) throws {
+        eventTracker.registerAliases(aliases)
     }
 }

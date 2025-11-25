@@ -31,6 +31,23 @@ async function handleResult(promise, errorMessage) {
         };
     }
 }
+// Helper function to handle synchronous calls and standardize errors
+function handleSyncResult(fn, errorMessage) {
+    try {
+        const result = fn();
+        return { isSuccess: true, data: result };
+    }
+    catch (error) {
+        console.error(`${errorMessage}:`, error);
+        return {
+            isSuccess: false,
+            error: {
+                code: error?.code || 'UNKNOWN_ERROR',
+                message: error?.message || errorMessage
+            }
+        };
+    }
+}
 /**
  * Initialize the Finvu SDK with configuration options
  * @param config Configuration for the Finvu SDK
@@ -183,6 +200,94 @@ export function addLoginOtpReceivedListener(listener) {
  */
 export function addLoginOtpVerifiedListener(listener) {
     return emitter.addListener('onLoginOtpVerified', listener);
+}
+// Event Tracking Methods
+// Track if native listener has been added
+let nativeListenerAdded = false;
+/**
+ * Enable or disable event tracking
+ * @param enabled Whether to enable event tracking
+ */
+export function setEventsEnabled(enabled) {
+    return handleSyncResult(() => {
+        FinvuModule.setEventsEnabled(enabled);
+        return undefined;
+    }, 'Failed to set events enabled');
+}
+/**
+ * Add event listener to receive SDK events
+ * This function automatically sets up the native listener bridge if not already set up.
+ *
+ * @param listener Callback function to receive events
+ * @returns EventSubscription that can be used to remove the listener
+ *
+ * @example
+ * ```typescript
+ * const subscription = addEventListener((event) => {
+ *   console.log('Event:', event.eventName, event.params);
+ * });
+ *
+ * // Later, to remove:
+ * subscription.remove();
+ * ```
+ */
+export function addEventListener(listener) {
+    // Automatically set up native listener bridge on first call
+    if (!nativeListenerAdded) {
+        const result = handleSyncResult(() => {
+            FinvuModule.addEventListener();
+            return undefined;
+        }, 'Failed to add native event listener');
+        if (result.isSuccess) {
+            nativeListenerAdded = true;
+        }
+        else {
+            console.warn('Failed to set up native event listener:', result.error);
+        }
+    }
+    return emitter.addListener('onEvent', listener);
+}
+/**
+ * Remove event listener
+ * Note: Call this when you no longer need to receive events (e.g., on app termination)
+ */
+export function removeEventListener() {
+    nativeListenerAdded = false;
+    return handleSyncResult(() => {
+        FinvuModule.removeEventListener();
+        return undefined;
+    }, 'Failed to remove event listener');
+}
+/**
+ * Register custom events before tracking them
+ * @param events Map of event names to EventDefinition objects
+ */
+export function registerCustomEvents(events) {
+    return handleSyncResult(() => {
+        FinvuModule.registerCustomEvents(events);
+        return undefined;
+    }, 'Failed to register custom events');
+}
+/**
+ * Track a custom event
+ * @param eventName Name of the event to track (must be registered first)
+ * @param params Optional parameters for the event
+ */
+export function track(eventName, params) {
+    return handleSyncResult(() => {
+        FinvuModule.track(eventName, params || {});
+        return undefined;
+    }, 'Failed to track event');
+}
+/**
+ * Register aliases for SDK event names
+ * @param aliases Map of SDK event names to custom alias names
+ */
+export function registerAliases(aliases) {
+    return handleSyncResult(() => {
+        FinvuModule.registerAliases(aliases);
+        return undefined;
+    }, 'Failed to register aliases');
 }
 export { default } from './FinvuModule';
 export * from './Finvu.types';
