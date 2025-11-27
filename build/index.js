@@ -1,5 +1,6 @@
 import { EventEmitter, NativeModulesProxy } from 'expo-modules-core';
 import FinvuModule from './FinvuModule';
+import { ConsentHandleStatus } from './Finvu.types';
 const emitter = new EventEmitter(FinvuModule ?? NativeModulesProxy.Finvu);
 // Helper function to handle promises and standardize errors
 async function handleResult(promise, errorMessage) {
@@ -22,11 +23,14 @@ async function handleResult(promise, errorMessage) {
     }
     catch (error) {
         console.error(`${errorMessage}:`, error);
+        // Extract error code and message from the error
+        const errorCode = error?.code || error?.name || '9999';
+        const errorMessageText = error?.message || error?.localizedDescription || errorMessage;
         return {
             isSuccess: false,
             error: {
-                code: error?.code || 'UNKNOWN_ERROR',
-                message: error?.message || errorMessage
+                code: errorCode,
+                message: errorMessageText
             }
         };
     }
@@ -39,11 +43,14 @@ function handleSyncResult(fn, errorMessage) {
     }
     catch (error) {
         console.error(`${errorMessage}:`, error);
+        // Extract error code and message from the error
+        const errorCode = error?.code || error?.name || '9999';
+        const errorMessageText = error?.message || error?.localizedDescription || errorMessage;
         return {
             isSuccess: false,
             error: {
-                code: error?.code || 'UNKNOWN_ERROR',
-                message: error?.message || errorMessage
+                code: errorCode,
+                message: errorMessageText
             }
         };
     }
@@ -176,6 +183,68 @@ export async function getEntityInfo(entityId, entityType) {
  */
 export async function getConsentRequestDetails(consentHandleId) {
     return handleResult(FinvuModule.getConsentRequestDetails(consentHandleId), 'Fetching consent request details failed');
+}
+/**
+ * Get consent handle status
+ * @param handleId Consent handle ID
+ */
+export async function getConsentHandleStatus(handleId) {
+    try {
+        const result = await FinvuModule.getConsentHandleStatus(handleId);
+        // Parse JSON if result is a string
+        let data;
+        if (typeof result === 'string' && result.startsWith('{')) {
+            try {
+                data = JSON.parse(result);
+            }
+            catch {
+                data = result;
+            }
+        }
+        else {
+            data = result;
+        }
+        // Convert status string to enum
+        const statusString = data?.status;
+        let status;
+        if (statusString === 'ACCEPT') {
+            status = ConsentHandleStatus.ACCEPT;
+        }
+        else if (statusString === 'DENY') {
+            status = ConsentHandleStatus.DENY;
+        }
+        else if (statusString === 'PENDING') {
+            status = ConsentHandleStatus.PENDING;
+        }
+        else {
+            status = statusString;
+        }
+        return {
+            isSuccess: true,
+            data: { status }
+        };
+    }
+    catch (error) {
+        console.error('Getting consent handle status failed:', error);
+        const errorCode = error?.code || error?.name || '9999';
+        const errorMessageText = error?.message || error?.localizedDescription || 'Getting consent handle status failed';
+        return {
+            isSuccess: false,
+            error: {
+                code: errorCode,
+                message: errorMessageText
+            }
+        };
+    }
+}
+/**
+ * Revoke consent
+ * @param consentId Consent ID to revoke
+ * @param accountAggregatorView Optional account aggregator view
+ * @param fipDetails Optional FIP reference details
+ */
+export async function revokeConsent(consentId, accountAggregatorView, fipDetails) {
+    return handleResult(FinvuModule.revokeConsent(consentId, accountAggregatorView ? JSON.parse(JSON.stringify(accountAggregatorView)) : null, fipDetails ? JSON.parse(JSON.stringify(fipDetails)) : null), 'Revoking consent failed');
 }
 /**
  * Logout from Finvu

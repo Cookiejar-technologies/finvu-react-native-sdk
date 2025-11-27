@@ -1,19 +1,78 @@
 import ExpoModulesCore
 import FinvuSDK
 
-func mapErrorCode(_ error: NSError) -> String {
+/**
+ * Maps error code to standardized error code string
+ * Handles both backend error codes and SDK error codes
+ */
+func mapErrorCode(_ error: NSError?) -> String {
+    guard let error = error else {
+        return "9999" // GENERIC_ERROR
+    }
+    
+    // Check if error has a string code in userInfo
+    if let codeString = error.userInfo["code"] as? String {
+        return codeString
+    }
+    
+    // Map numeric SDK error codes to string codes
     switch error.code {
     case 1001:
-        return "AUTH_LOGIN_RETRY"
+        return "1001" // AUTH_LOGIN_RETRY
     case 1002:
-        return "AUTH_LOGIN_FAILED"
+        return "1002" // AUTH_LOGIN_FAILED
+    case 1003:
+        return "1003" // AUTH_FORGOT_PASSWORD_FAILED
+    case 1004:
+        return "1004" // AUTH_LOGIN_VERIFY_MOBILE_NUMBER
+    case 1005:
+        return "1005" // AUTH_FORGOT_HANDLE_FAILED
     case 8000:
-        return "SESSION_DISCONNECTED"
+        return "8000" // SESSION_DISCONNECTED
+    case 8001:
+        return "8001" // SSL_PINNING_FAILURE_ERROR
+    case 8002:
+        return "8002" // RECORD_NOT_FOUND
+    case 9000:
+        return "9000" // LOGOUT
     case 9999:
-        return "GENERIC_ERROR"
+        return "9999" // GENERIC_ERROR
     default:
-        return "UNKNOWN_ERROR"
+        // Try to extract from domain or description
+        if let domain = error.domain as String?, domain.contains("Finvu") {
+            // Check if it's a backend error code (F400, A001, etc.)
+            if let codeFromDomain = extractErrorCode(from: error) {
+                return codeFromDomain
+            }
+        }
+        return "9999" // GENERIC_ERROR
     }
+}
+
+/**
+ * Extracts error code from error object
+ * Tries to find backend error codes like F400, A001, D001, C001, etc.
+ */
+func extractErrorCode(from error: NSError) -> String? {
+    // Check userInfo for error code
+    if let code = error.userInfo["code"] as? String {
+        return code
+    }
+    
+    // Check localizedDescription for error codes
+    if let description = error.localizedDescription as String? {
+        // Pattern: F400, A001, D001, C001, etc.
+        let pattern = #"([FADC]\d{3})"#
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []),
+           let match = regex.firstMatch(in: description, options: [], range: NSRange(location: 0, length: description.count)) {
+            let codeRange = Range(match.range(at: 1), in: description)
+            if let codeRange = codeRange {
+                return String(description[codeRange])
+            }
+        }
+    }
+    
+    return nil
 }
 
 
@@ -77,6 +136,8 @@ public class FinvuModule: Module {
         AsyncFunction("fetchFipDetails", fetchFipDetails)
         AsyncFunction("getEntityInfo", getEntityInfo)
         AsyncFunction("getConsentRequestDetails", getConsentRequestDetails)
+        AsyncFunction("getConsentHandleStatus", getConsentHandleStatus)
+        AsyncFunction("revokeConsent", revokeConsent)
         AsyncFunction("logout", logout)
         AsyncFunction("fipsAllFIPOptions", fipsAllFIPOptions)
         AsyncFunction("fetchLinkedAccounts", fetchLinkedAccounts)
@@ -136,7 +197,11 @@ public class FinvuModule: Module {
             return "Initialized successfully"
         } catch {
             print(error)
-            throw NSError(domain: "FinvuModule", code: -1, userInfo: [NSLocalizedDescriptionKey: "INITIALIZATION_ERROR"])
+            // Use standard error code for initialization errors
+            throw NSError(domain: "FinvuModule", code: 9999, userInfo: [
+                NSLocalizedDescriptionKey: "Initialization failed",
+                "code": "9999"
+            ])
         }
     }
 
@@ -145,9 +210,10 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as NSError? {
                     // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
                     self.sendEvent("onConnectionStatusChange", ["status": errorCode])
-                    promise.reject(errorCode, error.localizedDescription)
+                    promise.reject(errorCode, errorMessage)
                 } else {
                     // No error means success
                     self.sendEvent("onConnectionStatusChange", ["status": "Connected successfully"])
@@ -164,12 +230,14 @@ public class FinvuModule: Module {
                 self.sendEvent("onConnectionStatusChange", ["status": "Disconnected successfully"])
                 promise.resolve(["status": "Disconnected successfully"])
             } catch let error as NSError {
-                let errorCode : String = mapErrorCode(error)
+                let errorCode: String = mapErrorCode(error)
+                let errorMessage: String = error.localizedDescription
                 self.sendEvent("onConnectionStatusChange", ["status": errorCode])
-                promise.reject(errorCode, error.localizedDescription)
+                promise.reject(errorCode, errorMessage)
             } catch {
-                self.sendEvent("onConnectionStatusChange", ["status": "UNKNOWN_ERROR"])
-                promise.reject("UNKNOWN_ERROR", "An unknown error occurred while disconnecting.")
+                let errorCode = "9999"
+                self.sendEvent("onConnectionStatusChange", ["status": errorCode])
+                promise.reject(errorCode, "An unknown error occurred while disconnecting.")
             }
         }
     }
@@ -179,10 +247,11 @@ public class FinvuModule: Module {
             let status = self.sdkInstance.isConnected()
             promise.resolve(status)
         } catch let error as NSError {
-            let errorCode : String = mapErrorCode(error)
-            promise.reject(errorCode, error.localizedDescription)
+            let errorCode: String = mapErrorCode(error)
+            let errorMessage: String = error.localizedDescription
+            promise.reject(errorCode, errorMessage)
         } catch {
-            promise.reject("UNKNOWN_ERROR", "An unknown error occurred while checking connection status.")
+            promise.reject("9999", "An unknown error occurred while checking connection status.")
         }
     }
     
@@ -191,10 +260,11 @@ public class FinvuModule: Module {
             let hasSession = self.sdkInstance.hasSession()
             promise.resolve(hasSession)
         } catch let error as NSError {
-            let errorCode : String = mapErrorCode(error)
-            promise.reject(errorCode, error.localizedDescription)
+            let errorCode: String = mapErrorCode(error)
+            let errorMessage: String = error.localizedDescription
+            promise.reject(errorCode, errorMessage)
         } catch {
-            promise.reject("UNKNOWN_ERROR", "An unknown error occurred while checking session.")
+            promise.reject("9999", "An unknown error occurred while checking session.")
         }
     }
      
@@ -212,7 +282,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as NSError? {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     var response: [String: Any] = [
                         "authType": result.authType ?? "",
@@ -225,7 +296,7 @@ public class FinvuModule: Module {
                     
                     promise.resolve(response)
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -244,7 +315,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as NSError? {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let accountsArray: [[String: Any]] = result.accounts.map { account in
                         return [
@@ -267,7 +339,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -278,15 +350,16 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as NSError? {
                     // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     // Handle successful OTP verification
                     let userId = result.userId
                     promise.resolve(["userId": userId])
                 } else {
                     // Handle case where there is no result and no error
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -297,7 +370,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     var typeIdentifiersArray: [[String: Any]] = []
 
@@ -333,7 +407,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -344,7 +418,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     // Inline dictionary conversion
                     let resultDict: [String: Any] = [
@@ -363,7 +438,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -374,7 +449,8 @@ public class FinvuModule: Module {
                 DispatchQueue.main.async {
                     if let error = error as NSError? {
                         let errorCode: String = mapErrorCode(error)
-                        promise.reject(errorCode, error.localizedDescription)
+                        let errorMessage: String = error.localizedDescription
+                        promise.reject(errorCode, errorMessage)
                     } else if let result = result {
                         let detail = result.detail
                         let formatter = ISO8601DateFormatter()
@@ -435,8 +511,65 @@ public class FinvuModule: Module {
                             promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                         }
                     } else {
-                        promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                        promise.reject("9999", "An unknown error occurred.")
                     }
+            }
+        }
+    }
+    
+    private func getConsentHandleStatus(handleId: String, promise: Promise) {
+        sdkInstance.getConsentHandleStatus(handleId: handleId) { result, error in
+            DispatchQueue.main.async {
+                if let error = error as NSError? {
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
+                } else if let result = result {
+                    let responseDict: [String: Any] = [
+                        "status": result.status
+                    ]
+                    
+                    do {
+                        let jsonData = try JSONSerialization.data(withJSONObject: responseDict, options: [])
+                        let jsonString = String(data: jsonData, encoding: .utf8)!
+                        promise.resolve(jsonString)
+                    } catch {
+                        promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
+                    }
+                } else {
+                    promise.reject("9999", "An unknown error occurred.")
+                }
+            }
+        }
+    }
+    
+    private func revokeConsent(consentId: String, accountAggregatorMap: [String: Any]?, fipDetailsMap: [String: Any]?, promise: Promise) {
+        // Parse accountAggregator if provided
+        var accountAggregator: AccountAggregator? = nil
+        if let accountAggregatorMap = accountAggregatorMap {
+            if let id = accountAggregatorMap["id"] as? String {
+                accountAggregator = AccountAggregator(id: id)
+            }
+        }
+        
+        // Parse fipDetails if provided
+        var fipDetails: FIPReference? = nil
+        if let fipDetailsMap = fipDetailsMap {
+            if let fipId = fipDetailsMap["fipId"] as? String {
+                let fipName = fipDetailsMap["fipName"] as? String ?? ""
+                fipDetails = FIPReference(fipId: fipId, fipName: fipName)
+            }
+        }
+        
+        sdkInstance.revokeConsent(consentId: consentId, accountAggregator: accountAggregator, fipDetails: fipDetails) { error in
+            DispatchQueue.main.async {
+                if let error = error as NSError? {
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
+                } else {
+                    promise.resolve(nil)
+                }
             }
         }
     }
@@ -446,8 +579,9 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else {
                     promise.resolve(nil)
                 }
@@ -460,7 +594,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     // Convert FIPSearchResponse to Dictionary
                     let searchOptionsArray = result.searchOptions.map { fipInfo in
@@ -487,7 +622,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -498,7 +633,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let linkedAccountsArray: [[String: Any]] = result.linkedAccounts?.map { account in
                         let formatter = ISO8601DateFormatter()
@@ -531,7 +667,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -577,8 +713,9 @@ public class FinvuModule: Module {
         sdkInstance.linkAccounts(fipDetails: fipDetails, accounts: discoveredAccounts) { result, error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {
-                    let errorCode = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let resultDict: [String: Any] = [
                         "referenceNumber": result.referenceNumber
@@ -592,7 +729,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -605,7 +742,8 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     let errorCode: String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let linkedAccountsArray = result.linkedAccounts.map { account in
                         return [
@@ -628,7 +766,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -692,8 +830,9 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let consentsArray = result.consentsInfo?.map { consent in
                         return [
@@ -714,7 +853,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }
@@ -761,8 +900,9 @@ public class FinvuModule: Module {
             DispatchQueue.main.async {
                 if let error = error as? NSError {
                     // Convert NSError to React Native error
-                    let errorCode : String = mapErrorCode(error)
-                    promise.reject(errorCode, error.localizedDescription)
+                    let errorCode: String = mapErrorCode(error)
+                    let errorMessage: String = error.localizedDescription
+                    promise.reject(errorCode, errorMessage)
                 } else if let result = result {
                     let consentsArray = result.consentsInfo?.map { consent in
                         return [
@@ -783,7 +923,7 @@ public class FinvuModule: Module {
                         promise.reject("JSON_ERROR", "Failed to serialize result to JSON")
                     }
                 } else {
-                    promise.reject("UNKNOWN_ERROR", "An unknown error occurred.")
+                    promise.reject("9999", "An unknown error occurred.")
                 }
             }
         }

@@ -1,5 +1,5 @@
 {
-  "name": "@cookiejar-technologies/finvu-react-native-sdk",
+  "name": "finvu-react-native-sdk-test",
   "version": "0.2.0",
   "description": "Finvu react native module to integrate Finvu AA micro app.",
   "main": "build/index.js",

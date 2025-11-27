@@ -1,6 +1,7 @@
 import { EventEmitter, NativeModulesProxy, EventSubscription } from 'expo-modules-core';
 import FinvuModule from './FinvuModule';
-import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse, EventDefinition, FinvuEvent, FinvuEventListener } from './Finvu.types';
+import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse, EventDefinition, FinvuEvent, FinvuEventListener, ConsentHandleStatusResponse, AccountAggregatorView, FIPReferenceView, FinvuError, FinvuErrorCode } from './Finvu.types';
+import { ConsentHandleStatus } from './Finvu.types';
 
 // Define the event types for the EventEmitter
 type FinvuEvents = {
@@ -15,7 +16,7 @@ const emitter = new EventEmitter<FinvuEvents>(FinvuModule ?? NativeModulesProxy.
 // Define a consistent Result type for all responses
 export type Result<T> = 
   | { isSuccess: true, data: T }  // Success response
-  | { isSuccess: false, error: { code: string, message: string } };  // Error response
+  | { isSuccess: false, error: FinvuError };  // Error response
 
 // Helper function to handle promises and standardize errors
 async function handleResult<T>(promise: Promise<any>, errorMessage: string): Promise<Result<T>> {
@@ -37,11 +38,15 @@ async function handleResult<T>(promise: Promise<any>, errorMessage: string): Pro
     return { isSuccess: true, data }; 
   } catch (error: any) {
     console.error(`${errorMessage}:`, error);
+    // Extract error code and message from the error
+    const errorCode: FinvuErrorCode = error?.code || error?.name || '9999';
+    const errorMessageText: string = error?.message || error?.localizedDescription || errorMessage;
+    
     return { 
       isSuccess: false, 
       error: { 
-        code: error?.code || 'UNKNOWN_ERROR',
-        message: error?.message || errorMessage
+        code: errorCode,
+        message: errorMessageText
       } 
     };
   }
@@ -54,11 +59,15 @@ function handleSyncResult<T>(fn: () => T, errorMessage: string): Result<T> {
     return { isSuccess: true, data: result }; 
   } catch (error: any) {
     console.error(`${errorMessage}:`, error);
+    // Extract error code and message from the error
+    const errorCode: FinvuErrorCode = error?.code || error?.name || '9999';
+    const errorMessageText: string = error?.message || error?.localizedDescription || errorMessage;
+    
     return { 
       isSuccess: false, 
       error: { 
-        code: error?.code || 'UNKNOWN_ERROR',
-        message: error?.message || errorMessage
+        code: errorCode,
+        message: errorMessageText
       } 
     };
   }
@@ -262,6 +271,81 @@ export async function getConsentRequestDetails(
   consentHandleId: string
 ): Promise<Result<ConsentDetail>> {
   return handleResult(FinvuModule.getConsentRequestDetails(consentHandleId), 'Fetching consent request details failed');
+}
+
+/**
+ * Get consent handle status
+ * @param handleId Consent handle ID
+ */
+export async function getConsentHandleStatus(
+  handleId: string
+): Promise<Result<ConsentHandleStatusResponse>> {
+  try {
+    const result = await FinvuModule.getConsentHandleStatus(handleId);
+    
+    // Parse JSON if result is a string
+    let data: any;
+    if (typeof result === 'string' && result.startsWith('{')) {
+      try {
+        data = JSON.parse(result);
+      } catch {
+        data = result;
+      }
+    } else {
+      data = result;
+    }
+    
+    // Convert status string to enum
+    const statusString = data?.status;
+    let status: ConsentHandleStatus;
+    if (statusString === 'ACCEPT') {
+      status = ConsentHandleStatus.ACCEPT;
+    } else if (statusString === 'DENY') {
+      status = ConsentHandleStatus.DENY;
+    } else if (statusString === 'PENDING') {
+      status = ConsentHandleStatus.PENDING;
+    } else {
+      status = statusString as ConsentHandleStatus;
+    }
+    
+    return { 
+      isSuccess: true, 
+      data: { status } 
+    };
+  } catch (error: any) {
+    console.error('Getting consent handle status failed:', error);
+    const errorCode: FinvuErrorCode = error?.code || error?.name || '9999';
+    const errorMessageText: string = error?.message || error?.localizedDescription || 'Getting consent handle status failed';
+    
+    return { 
+      isSuccess: false, 
+      error: { 
+        code: errorCode,
+        message: errorMessageText
+      } 
+    };
+  }
+}
+
+/**
+ * Revoke consent
+ * @param consentId Consent ID to revoke
+ * @param accountAggregatorView Optional account aggregator view
+ * @param fipDetails Optional FIP reference details
+ */
+export async function revokeConsent(
+  consentId: string,
+  accountAggregatorView?: AccountAggregatorView | null,
+  fipDetails?: FIPReferenceView | null
+): Promise<Result<void>> {
+  return handleResult(
+    FinvuModule.revokeConsent(
+      consentId,
+      accountAggregatorView ? JSON.parse(JSON.stringify(accountAggregatorView)) : null,
+      fipDetails ? JSON.parse(JSON.stringify(fipDetails)) : null
+    ),
+    'Revoking consent failed'
+  );
 }
 
 /**

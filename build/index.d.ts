@@ -1,14 +1,11 @@
 import { EventSubscription } from 'expo-modules-core';
-import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse, EventDefinition, FinvuEventListener } from './Finvu.types';
+import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse, EventDefinition, FinvuEventListener, ConsentHandleStatusResponse, AccountAggregatorView, FIPReferenceView, FinvuError } from './Finvu.types';
 export type Result<T> = {
     isSuccess: true;
     data: T;
 } | {
     isSuccess: false;
-    error: {
-        code: string;
-        message: string;
-    };
+    error: FinvuError;
 };
 /**
  * Initialize the Finvu SDK with configuration options
@@ -116,6 +113,18 @@ export declare function getEntityInfo(entityId: string, entityType: string): Pro
  * @param consentHandleId Consent handle ID
  */
 export declare function getConsentRequestDetails(consentHandleId: string): Promise<Result<ConsentDetail>>;
+/**
+ * Get consent handle status
+ * @param handleId Consent handle ID
+ */
+export declare function getConsentHandleStatus(handleId: string): Promise<Result<ConsentHandleStatusResponse>>;
+/**
+ * Revoke consent
+ * @param consentId Consent ID to revoke
+ * @param accountAggregatorView Optional account aggregator view
+ * @param fipDetails Optional FIP reference details
+ */
+export declare function revokeConsent(consentId: string, accountAggregatorView?: AccountAggregatorView | null, fipDetails?: FIPReferenceView | null): Promise<Result<void>>;
 /**
  * Logout from Finvu
  */
