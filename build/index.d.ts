@@ -1,14 +1,11 @@
 import { EventSubscription } from 'expo-modules-core';
-import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse } from './Finvu.types';
+import type { ConsentDetail, DiscoverAccountsResponse, DiscoveredAccount, FinvuConfig, FipDetails, FipsAllFIPOptionsResponse, LinkedAccountDetails, LoginWithUsernameOrMobileNumberResponse, EventDefinition, FinvuEventListener, ConsentHandleStatusResponse, AccountAggregatorView, FIPReferenceView, FinvuError } from './Finvu.types';
 export type Result<T> = {
     isSuccess: true;
     data: T;
 } | {
     isSuccess: false;
-    error: {
-        code: string;
-        message: string;
-    };
+    error: FinvuError;
 };
 /**
  * Initialize the Finvu SDK with configuration options
@@ -117,6 +114,18 @@ export declare function getEntityInfo(entityId: string, entityType: string): Pro
  */
 export declare function getConsentRequestDetails(consentHandleId: string): Promise<Result<ConsentDetail>>;
 /**
+ * Get consent handle status
+ * @param handleId Consent handle ID
+ */
+export declare function getConsentHandleStatus(handleId: string): Promise<Result<ConsentHandleStatusResponse>>;
+/**
+ * Revoke consent
+ * @param consentId Consent ID to revoke
+ * @param accountAggregatorView Optional account aggregator view
+ * @param fipDetails Optional FIP reference details
+ */
+export declare function revokeConsent(consentId: string, accountAggregatorView?: AccountAggregatorView | null, fipDetails?: FIPReferenceView | null): Promise<Result<void>>;
+/**
  * Logout from Finvu
  */
 export declare function logout(): Promise<Result<void>>;
@@ -134,6 +143,50 @@ export declare function addLoginOtpReceivedListener(listener: (event: any) => vo
  * Add listener for login OTP verified
  */
 export declare function addLoginOtpVerifiedListener(listener: (event: any) => void): EventSubscription;
+/**
+ * Enable or disable event tracking
+ * @param enabled Whether to enable event tracking
+ */
+export declare function setEventsEnabled(enabled: boolean): Result<void>;
+/**
+ * Add event listener to receive SDK events
+ * This function automatically sets up the native listener bridge if not already set up.
+ *
+ * @param listener Callback function to receive events
+ * @returns EventSubscription that can be used to remove the listener
+ *
+ * @example
+ * ```typescript
+ * const subscription = addEventListener((event) => {
+ *   console.log('Event:', event.eventName, event.params);
+ * });
+ *
+ * // Later, to remove:
+ * subscription.remove();
+ * ```
+ */
+export declare function addEventListener(listener: FinvuEventListener): EventSubscription;
+/**
+ * Remove event listener
+ * Note: Call this when you no longer need to receive events (e.g., on app termination)
+ */
+export declare function removeEventListener(): Result<void>;
+/**
+ * Register custom events before tracking them
+ * @param events Map of event names to EventDefinition objects
+ */
+export declare function registerCustomEvents(events: Record<string, EventDefinition>): Result<void>;
+/**
+ * Track a custom event
+ * @param eventName Name of the event to track (must be registered first)
+ * @param params Optional parameters for the event
+ */
+export declare function track(eventName: string, params?: Record<string, any>): Result<void>;
+/**
+ * Register aliases for SDK event names
+ * @param aliases Map of SDK event names to custom alias names
+ */
+export declare function registerAliases(aliases: Record<string, string>): Result<void>;
 export { default } from './FinvuModule';
 export * from './Finvu.types';
 //# sourceMappingURL=index.d.ts.map
