@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.author         = package['author']
   s.homepage       = package['homepage']
   s.platforms      = {
-    :ios => '15.1',
+    :ios => '16.0',
     :tvos => '15.1'
   }
   s.swift_version  = '5.4'
@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'FinvuSDK'
+  s.dependency 'FinvuSDK', '~> 2.0'
 
   # Swift/Objective-C compatibility
   s.pod_target_xcconfig = {

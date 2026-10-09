@@ -189,4 +189,5 @@ export declare function track(eventName: string, params?: Record<string, any>): 
 export declare function registerAliases(aliases: Record<string, string>): Result<void>;
 export { default } from './FinvuModule';
 export * from './Finvu.types';
+export { mfaClient } from './FinvuMfa';
 //# sourceMappingURL=index.d.ts.map

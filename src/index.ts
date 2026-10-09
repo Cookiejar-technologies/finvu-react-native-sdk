@@ -491,3 +491,4 @@ export function registerAliases(
 
 export { default } from './FinvuModule';
 export * from './Finvu.types';
+export { mfaClient } from './FinvuMfa';

@@ -360,4 +360,5 @@ export function registerAliases(aliases) {
 }
 export { default } from './FinvuModule';
 export * from './Finvu.types';
+export { mfaClient } from './FinvuMfa';
 //# sourceMappingURL=index.js.map

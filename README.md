@@ -29,11 +29,12 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 ## Latest SDK Version
 
-- React Native SDK: v0.1.0
+- React Native SDK: v2.0.0 (`@cookiejar-technologies/finvu-react-native-sdk` on npm)
+- Android SDK: 2.0.0 · iOS FinvuSDK: 2.0.0
 
 ## Prerequisites
 
-- Minimum Android SDK version: 24
+- Minimum Android SDK version: 25
 
 - Minimum iOS version: 16
 
@@ -43,10 +44,8 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 1. Install the SDK:
 
-In your app's package.json add the below dependency.
-
 ```bash
-"finvu-react-native-sdk": "github:Cookiejar-technologies/finvu-react-native-sdk#latest_react_lative_sdk_version_number",
+npm install @cookiejar-technologies/finvu-react-native-sdk
 ```
 
 2. Android Configuration (Project-level `build.gradle`) in react native mobile app android folder:
@@ -72,7 +71,7 @@ In your app's package.json add the below dependency.
 ```gradle
     android {
         defaultConfig {
-            minSdkVersion 24	
+            minSdkVersion 25
         }
     }
 ```
@@ -84,10 +83,8 @@ In your app's package.json add the below dependency.
 platform :ios, '16.0'
 
 # Add Finvu SDK dependency
-pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => 'latest_ios_sdk_version'
+pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.0.0'
 ```
-
-Note : current latest version is 1.0.3
 
 5. Build & Run React Native app:
 
@@ -104,7 +101,7 @@ https://github.com/Cookiejar-technologies/finvu-react-native-demo-app
 ## SDK Initialization and Connection Management
 
 ```typescript
-    import * as  Finvu  from  'finvu-react-native-sdk';
+    import * as  Finvu  from  '@cookiejar-technologies/finvu-react-native-sdk';
 
     // Initialize SDK
     const  config  = {
@@ -122,9 +119,76 @@ https://github.com/Cookiejar-technologies/finvu-react-native-demo-app
     const  connectResult  =  await  Finvu.connect();
 ```
 
+## MFA Login (recommended)
+
+The step-based MFA login replaces `loginWithUsernameOrMobileNumber` + `verifyLoginOtp`. The backend decides the factors (OTP, SNA, PIN, device binding); your app renders whatever step comes back until it gets a `complete` step. Calls never reject: failures arrive as a `complete` step with `result.status === 'failed'`.
+
+### Setup for SNA and device binding
+
+- Pass `finvuAuthSNAConfig` to `initializeWith` (`{ environment: FinvuEnviornment.PRODUCTION }` or `UAT`). Without it, login still works but SNA falls back to OTP and device binding is skipped.
+- Android: on `<application>` in `AndroidManifest.xml` add `android:networkSecurityConfig="@xml/finvu_silent_network_authentication_network_security_config"` (the file ships in the SDK).
+- iOS: in `Info.plist` add `NSFaceIDUsageDescription`, and `NSAppTransportSecurity` exceptions (allow insecure HTTP loads, include subdomains) for `80.in.safr.sekuramobile.com`, `api-csp.airtel.in`, `in-vil.ipification.com` and `partnerapi.jio.com`.
+
+### Code
+
+```typescript
+import * as Finvu from '@cookiejar-technologies/finvu-react-native-sdk';
+import { mfaClient, FinvuEnviornment } from '@cookiejar-technologies/finvu-react-native-sdk';
+import type { MfaStep } from '@cookiejar-technologies/finvu-react-native-sdk';
+
+// 1. Initialise (once) and connect
+await Finvu.initializeWith({
+  finvuEndpoint: 'wss://webvwlive.finvu.in/consentapiv2',
+  finvuAuthSNAConfig: { environment: FinvuEnviornment.PRODUCTION },
+});
+const connected = await Finvu.connect();
+if (!connected.isSuccess) { /* show error */ }
+
+// 2. Start the login
+let step: MfaStep = await mfaClient.login({ mobileNumber: '9876543210', consentHandle });
+
+// 3. Render each step; every action returns the next step
+async function render(step: MfaStep) {
+  switch (step.action) {
+    case 'input':
+      // OTP or PIN screen. Title from step.factor / step.requirement / step.purpose:
+      //  otp + purpose 'pinReset' -> "Enter the OTP to reset your PIN"
+      //  otp                      -> "Enter the OTP sent to your mobile"
+      //  pin + purpose 'pinReset' -> "Set a new PIN"
+      //  pin + 'enrollment'       -> "Create a PIN"
+      //  pin + 'verification'     -> "Enter your PIN"
+      // Show step.validationError?.message (and attemptsRemaining) when present.
+      // Submit:      render(await step.submit(value))
+      // Resend:      if (step.resend)    render(await step.resend())     // OTP only; timer from step.resendInfo
+      // Forgot PIN:  if (step.forgotPin) render(await step.forgotPin())  // enter-PIN screen only
+      break;
+    case 'silent':
+      // SNA or device binding: show a loader; the SDK shows any biometric prompt itself
+      render(await step.completion);
+      break;
+    case 'selectFactor':
+      // One button per step.availableFactors entry
+      // render(await step.selectFactor(chosenFactor))
+      break;
+    case 'complete':
+      if (step.result.status === 'authenticated') {
+        // Session is set: continue the consent journey
+        const details = await Finvu.getConsentRequestDetails(consentHandle);
+      } else if (step.retry) {
+        // Biometric prompt cancelled or failed: offer "Try again" once
+        // render(await step.retry())
+      } else {
+        // Show step.result.error.message; offer "Start again" (call mfaClient.login again)
+      }
+      break;
+  }
+}
+render(step);
+```
+
 ## Authentication
 
-### Login with Consent Handle
+### Login with Consent Handle (legacy OTP login)
 
 ```typescript
     const  loginResult  =  await  Finvu.loginWithUsernameOrMobileNumber(

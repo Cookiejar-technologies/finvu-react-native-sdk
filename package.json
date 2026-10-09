@@ -1,6 +1,6 @@
 {
-  "name": "finvu-react-native-sdk",
-  "version": "0.2.1",
+  "name": "@cookiejar-technologies/finvu-react-native-sdk",
+  "version": "2.0.0",
   "description": "Finvu react native module to integrate Finvu AA micro app.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -10,7 +10,9 @@
     "ios/",
     "README.md",
     "LICENSE",
-    "expo-module.config.json"
+    "expo-module.config.json",
+    "!android/.gradle",
+    "!android/build"
   ],
   "scripts": {
     "build": "expo-module build",
@@ -24,10 +26,8 @@
     "open:android": "open -a \"Android Studio\" example/android",
     "login:github": "npm login --scope=@cookiejar-technologies --registry=https://npm.pkg.github.com",
     "publish:github": "npm publish --registry=https://npm.pkg.github.com",
-    "publish:patch": "npm version patch && npm run publish:github",
-    "publish:minor": "npm version minor && npm run publish:github",
-    "publish:major": "npm version major && npm run publish:github",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "ci:publish": "npm run build && npm publish --access public"
   },
   "keywords": [
     "react-native",
@@ -43,7 +43,8 @@
     "url": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "bugs": {
     "url": "https://github.com/Cookiejar-technologies/finvu-react-native-sdk/issues"

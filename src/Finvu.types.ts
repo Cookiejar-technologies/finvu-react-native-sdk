@@ -436,3 +436,109 @@ export function isConsentError(code: string): boolean {
 export function isSDKError(code: string): boolean {
   return ['1001', '1002', '1003', '1004', '1005', '8000', '8001', '8002', '9000', '9999'].includes(code);
 }
+// ---------------------------------------------------------------------------
+// MFA login (OTP, SNA, PIN, device binding)
+//
+// Every MFA call resolves to an MfaStep and never rejects; failures come back as
+// an MfaCompleteStep whose result.status is 'failed'. Switch on `step.action`
+// and act on each step until an MfaCompleteStep is returned.
+// ---------------------------------------------------------------------------
+
+/** 'otp' | 'pin' | 'sna' | 'deviceBinding' */
+export type MfaFactor = 'otp' | 'pin' | 'sna' | 'deviceBinding';
+
+export interface MfaValidationError {
+  code: string;
+  message: string;
+  attemptsRemaining?: number;
+}
+
+export interface MfaError {
+  code: string;
+  message: string;
+}
+
+export interface MfaSession {
+  userId?: string;
+  sessionId?: string;
+  csid?: string;
+}
+
+export type MfaResult =
+  | { status: 'authenticated'; session: MfaSession }
+  | { status: 'failed'; error: MfaError };
+
+export interface MfaInputSpec {
+  pinLength: number;
+}
+
+export interface MfaResendInfo {
+  resendAfterSeconds?: number;
+  resendsRemaining?: number;
+}
+
+/** Backend factor vocabulary: 'SNA', 'OTP', 'PIN', 'DEVICE_BINDING'. Empty list = not specified. */
+export interface MfaSupportedFactors {
+  firstFactor?: string[];
+  secondFactor?: string[];
+}
+
+export interface MfaLoginParams {
+  mobileNumber?: string;
+  username?: string;
+  consentHandle?: string;
+  handleId?: string;
+  clientContext?: Record<string, unknown>;
+  supportedFactors?: MfaSupportedFactors;
+  /** Default true */
+  useEncConsent?: boolean;
+  finalizeSession?: boolean;
+  /** Default false. true lets the user choose the step-up factor (MfaSelectFactorStep). */
+  selectFactorChoice?: boolean;
+}
+
+/** Ask the user for an OTP or PIN, then call submit. */
+export interface MfaInputStep {
+  action: 'input';
+  factor: 'otp' | 'pin';
+  requirement: 'verification' | 'enrollment';
+  /** 'pinReset' during forgot PIN */
+  purpose?: 'pinReset';
+  /** PIN steps only */
+  inputSpec?: MfaInputSpec;
+  /** Set when the previous value was rejected: show the same screen with this message. */
+  validationError?: MfaValidationError;
+  /** OTP steps only, when the backend sends it */
+  resendInfo?: MfaResendInfo;
+  submit: (value: string) => Promise<MfaStep>;
+  /** OTP steps only */
+  resend?: () => Promise<MfaStep>;
+  /** PIN verification only (not during a PIN reset) */
+  forgotPin?: () => Promise<MfaStep>;
+}
+
+/** Work runs without user input (SNA, device-binding prompt). Show a loader and await completion. */
+export interface MfaSilentStep {
+  action: 'silent';
+  factor: 'sna' | 'deviceBinding';
+  completion: Promise<MfaStep>;
+}
+
+/** Let the user choose the step-up factor. */
+export interface MfaSelectFactorStep {
+  action: 'selectFactor';
+  availableFactors: MfaFactor[];
+  selectFactor: (factor: MfaFactor) => Promise<MfaStep>;
+}
+
+/**
+ * Login finished. retry is set only when an on-device device-binding prompt failed;
+ * it can be used once and resolves like a silent step's completion.
+ */
+export interface MfaCompleteStep {
+  action: 'complete';
+  result: MfaResult;
+  retry?: () => Promise<MfaStep>;
+}
+
+export type MfaStep = MfaInputStep | MfaSilentStep | MfaSelectFactorStep | MfaCompleteStep;

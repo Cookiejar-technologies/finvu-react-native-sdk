@@ -91,6 +91,8 @@ class FinvuClientConfig: FinvuConfig {
 public class FinvuModule: Module {
     private let sdkInstance = FinvuManager.shared
     private let eventTracker = FinvuEventTracker.shared
+    // Keeps live MFA steps for JS (see FinvuMfaBridge)
+    private let mfaBridge = FinvuMfaBridge()
     private lazy var eventListener: FinvuEventListener = {
         let listener = EventListener { [weak self] event in
             guard let self = self else { return }
@@ -153,6 +155,29 @@ public class FinvuModule: Module {
         Function("registerCustomEvents", registerCustomEvents)
         Function("track", track)
         Function("registerAliases", registerAliases)
+
+        // MFA login. Every call resolves to a step; failures are a 'complete' step with resultStatus 'failed'.
+        AsyncFunction("mfaLogin") { (params: [String: Any], promise: Promise) in
+            self.mfaBridge.login(params, promise: promise)
+        }
+        AsyncFunction("mfaSubmit") { (stepId: String, value: String, promise: Promise) in
+            self.mfaBridge.submit(stepId: stepId, value: value, promise: promise)
+        }
+        AsyncFunction("mfaResend") { (stepId: String, promise: Promise) in
+            self.mfaBridge.resend(stepId: stepId, promise: promise)
+        }
+        AsyncFunction("mfaForgotPin") { (stepId: String, promise: Promise) in
+            self.mfaBridge.forgotPin(stepId: stepId, promise: promise)
+        }
+        AsyncFunction("mfaSelectFactor") { (stepId: String, factor: String, promise: Promise) in
+            self.mfaBridge.selectFactor(stepId: stepId, factor: factor, promise: promise)
+        }
+        AsyncFunction("mfaAwaitCompletion") { (stepId: String, promise: Promise) in
+            self.mfaBridge.awaitCompletion(stepId: stepId, promise: promise)
+        }
+        AsyncFunction("mfaRetry") { (stepId: String, promise: Promise) in
+            self.mfaBridge.retry(stepId: stepId, promise: promise)
+        }
     }
     
     private func getRootViewController() -> UIViewController? {
@@ -595,6 +620,7 @@ public class FinvuModule: Module {
     }
     
     private func logout(promise: Promise) {
+        mfaBridge.clear()
         sdkInstance.logout { error in
             DispatchQueue.main.async {
                 if let error = error as? NSError {

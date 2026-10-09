@@ -65,6 +65,8 @@ class FinvuModule : Module() {
   ) : FinvuSNAAuthConfig
 
   private val sdkInstance: FinvuManager = FinvuManager.shared
+  // Keeps live MFA steps for JS (see FinvuMfaBridge)
+  private val mfaBridge = FinvuMfaBridge()
   private val eventTracker: FinvuEventTracker = FinvuEventTracker.shared
   private val eventListener = object : FinvuEventListener {
     override fun onEvent(event: FinvuEvent) {
@@ -387,6 +389,7 @@ class FinvuModule : Module() {
     }
 
     AsyncFunction("logout") { promise: Promise ->
+      mfaBridge.clear()
       try {
         sdkInstance.logout { result ->
           if (result.isSuccess) {
@@ -628,6 +631,35 @@ class FinvuModule : Module() {
         e.printStackTrace()
         throw RuntimeException("TRACK_EVENT_ERROR", e)
       }
+    }
+
+    // MFA login. Every call resolves to a step; failures are a 'complete' step with resultStatus 'failed'.
+    AsyncFunction("mfaLogin") { params: Map<String, Any?>, promise: Promise ->
+      mfaBridge.login(params, promise)
+    }
+
+    AsyncFunction("mfaSubmit") { stepId: String, value: String, promise: Promise ->
+      mfaBridge.submit(stepId, value, promise)
+    }
+
+    AsyncFunction("mfaResend") { stepId: String, promise: Promise ->
+      mfaBridge.resend(stepId, promise)
+    }
+
+    AsyncFunction("mfaForgotPin") { stepId: String, promise: Promise ->
+      mfaBridge.forgotPin(stepId, promise)
+    }
+
+    AsyncFunction("mfaSelectFactor") { stepId: String, factor: String, promise: Promise ->
+      mfaBridge.selectFactor(stepId, factor, promise)
+    }
+
+    AsyncFunction("mfaAwaitCompletion") { stepId: String, promise: Promise ->
+      mfaBridge.awaitCompletion(stepId, promise)
+    }
+
+    AsyncFunction("mfaRetry") { stepId: String, promise: Promise ->
+      mfaBridge.retry(stepId, promise)
     }
 
     Function("registerAliases") { aliases: Map<String, String> ->
