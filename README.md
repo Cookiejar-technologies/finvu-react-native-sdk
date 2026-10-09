@@ -29,7 +29,7 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 ## Latest SDK Version
 
-- React Native SDK: v2.0.0 (`@cookiejar-technologies/finvu-react-native-sdk` on npm)
+- React Native SDK: v2.0.0 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
 - Android SDK: 2.0.0 · iOS FinvuSDK: 2.0.0
 
 ## Prerequisites
@@ -45,7 +45,7 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 1. Install the SDK:
 
 ```bash
-npm install @cookiejar-technologies/finvu-react-native-sdk
+npm install @io.github.cookiejar-technologies/finvu-react-native-sdk
 ```
 
 2. Android Configuration (Project-level `build.gradle`) in react native mobile app android folder:
@@ -101,7 +101,7 @@ https://github.com/Cookiejar-technologies/finvu-react-native-demo-app
 ## SDK Initialization and Connection Management
 
 ```typescript
-    import * as  Finvu  from  '@cookiejar-technologies/finvu-react-native-sdk';
+    import * as  Finvu  from  '@io.github.cookiejar-technologies/finvu-react-native-sdk';
 
     // Initialize SDK
     const  config  = {
@@ -132,9 +132,9 @@ The step-based MFA login replaces `loginWithUsernameOrMobileNumber` + `verifyLog
 ### Code
 
 ```typescript
-import * as Finvu from '@cookiejar-technologies/finvu-react-native-sdk';
-import { mfaClient, FinvuEnviornment } from '@cookiejar-technologies/finvu-react-native-sdk';
-import type { MfaStep } from '@cookiejar-technologies/finvu-react-native-sdk';
+import * as Finvu from '@io.github.cookiejar-technologies/finvu-react-native-sdk';
+import { mfaClient, FinvuEnviornment } from '@io.github.cookiejar-technologies/finvu-react-native-sdk';
+import type { MfaStep } from '@io.github.cookiejar-technologies/finvu-react-native-sdk';
 
 // 1. Initialise (once) and connect
 await Finvu.initializeWith({
