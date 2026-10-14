@@ -29,8 +29,8 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 ## Latest SDK Version
 
-- React Native SDK: v2.0.0 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
-- Android SDK: 2.0.0 · iOS FinvuSDK: 2.0.0
+- React Native SDK: v2.0.1 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
+- Android SDK: 2.0.1 · iOS FinvuSDK: 2.0.1
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ npm install @io.github.cookiejar-technologies/finvu-react-native-sdk
 platform :ios, '16.0'
 
 # Add Finvu SDK dependency
-pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.0.0'
+pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.0.1'
 ```
 
 5. Build & Run React Native app:
@@ -174,9 +174,6 @@ async function render(step: MfaStep) {
       if (step.result.status === 'authenticated') {
         // Session is set: continue the consent journey
         const details = await Finvu.getConsentRequestDetails(consentHandle);
-      } else if (step.retry) {
-        // Biometric prompt cancelled or failed: offer "Try again" once
-        // render(await step.retry())
       } else {
         // Show step.result.error.message; offer "Start again" (call mfaClient.login again)
       }

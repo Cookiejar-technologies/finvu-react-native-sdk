@@ -532,8 +532,8 @@ export interface MfaSelectFactorStep {
 }
 
 /**
- * Login finished. retry is set only when an on-device device-binding prompt failed;
- * it can be used once and resolves like a silent step's completion.
+ * Login finished. retry is never set: every device-binding failure falls back to PIN
+ * instead. It is kept for API compatibility.
  */
 export interface MfaCompleteStep {
   action: 'complete';
