@@ -1,6 +1,6 @@
 import type { MfaLoginParams, MfaStep } from './Finvu.types';
 /**
- * Step-based MFA login (OTP, SNA, PIN, device binding), backed by the native SDKs.
+ * Step-based MFA login (OTP, SNA, PIN with PIN recovery, device binding), backed by the native SDKs.
  *
  * ```ts
  * let step = await mfaClient.login({ mobileNumber: '9876543210', consentHandle });

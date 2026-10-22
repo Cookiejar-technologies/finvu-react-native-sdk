@@ -7,6 +7,8 @@ import com.finvu.android.mfa.MfaInputStep
 import com.finvu.android.mfa.MfaSelectFactorStep
 import com.finvu.android.mfa.MfaSilentStep
 import com.finvu.android.mfa.MfaStep
+import com.finvu.android.mfa.RecoveryAccountAnswer
+import com.finvu.android.mfa.RecoveryInfo
 import com.finvu.android.mfa.SupportedFactors
 import expo.modules.kotlin.Promise
 import kotlinx.coroutines.CancellationException
@@ -68,6 +70,27 @@ internal class FinvuMfaBridge {
   fun retry(stepId: String, promise: Promise) =
     withStep<MfaCompleteStep>(stepId, promise) { it.retry?.invoke() }
 
+  fun submitAccounts(stepId: String, accounts: List<Map<String, Any?>>, promise: Promise) =
+    withStep<MfaInputStep>(stepId, promise) { step ->
+      step.submit(accounts.map {
+        RecoveryAccountAnswer(
+          fipId = it["fipId"] as? String ?: "",
+          last4 = it["last4"] as? String ?: "",
+          fiType = it["fiType"] as? String,
+          accType = it["accType"] as? String
+        )
+      })
+    }
+
+  fun cancel(stepId: String, promise: Promise) =
+    withStep<MfaInputStep>(stepId, promise) { it.cancel?.invoke() }
+
+  fun switchMethod(stepId: String, method: String, promise: Promise) =
+    withStep<MfaInputStep>(stepId, promise) { it.switchMethod?.invoke(method) }
+
+  fun selectEmail(stepId: String, emailHash: String, promise: Promise) =
+    withStep<MfaInputStep>(stepId, promise) { it.selectEmail?.invoke(emailHash) }
+
   /** Runs [block] on the step with [stepId]; a null result means the action is not available on it. */
   private inline fun <reified T : MfaStep> withStep(
     stepId: String,
@@ -104,9 +127,15 @@ internal class FinvuMfaBridge {
         "requirement" to step.requirement,
         "purpose" to step.purpose,
         "pinLength" to step.inputSpec?.pinLength,
-        "validationError" to step.validationError?.let {
-          mapOf("code" to it.code, "message" to it.message, "attemptsRemaining" to it.attemptsRemaining)
-            .filterValues { value -> value != null }
+        "validationError" to step.validationError?.let { error ->
+          mapOf(
+            "code" to error.code,
+            "message" to error.message,
+            "attemptsRemaining" to error.attemptsRemaining,
+            "support" to error.support?.let {
+              mapOf("email" to it.email, "phone" to it.phone, "message" to it.message).filterValues { value -> value != null }
+            }
+          ).filterValues { value -> value != null }
         },
         "resendInfo" to step.resendInfo?.let {
           mapOf("resendAfterSeconds" to it.resendAfterSeconds, "resendsRemaining" to it.resendsRemaining)
@@ -114,7 +143,11 @@ internal class FinvuMfaBridge {
         },
         "hasResend" to (step.resend != null),
         "hasForgotPin" to (step.forgotPin != null),
-        "hasRetry" to false
+        "hasRetry" to false,
+        "recovery" to step.recovery?.let { recoveryMap(it) },
+        "hasCancel" to (step.cancel != null),
+        "hasSwitchMethod" to (step.switchMethod != null),
+        "hasSelectEmail" to (step.selectEmail != null)
       )
       is MfaSilentStep -> mapOf("factor" to step.factor, "hasResend" to false, "hasForgotPin" to false, "hasRetry" to false)
       is MfaSelectFactorStep -> mapOf(
@@ -137,6 +170,19 @@ internal class FinvuMfaBridge {
     }
     return (mapOf("stepId" to stepId, "action" to step.action) + map).filterValues { it != null }
   }
+
+  private fun recoveryMap(recovery: RecoveryInfo): Map<String, Any?> = mapOf(
+    "method" to recovery.method,
+    "availableMethods" to recovery.availableMethods,
+    "accounts" to recovery.accounts?.map {
+      mapOf("fipId" to it.fipId, "fiType" to it.fiType, "accType" to it.accType).filterValues { value -> value != null }
+    },
+    "minAccountsRequired" to recovery.minAccountsRequired,
+    "emails" to recovery.emails?.map {
+      mapOf("emailHash" to it.emailHash, "maskedEmail" to it.maskedEmail, "primary" to it.primary, "selected" to it.selected)
+    },
+    "expiresAt" to recovery.expiresAt
+  ).filterValues { it != null }
 
   /** A failed 'complete' step built on this side (not stored: it has no retry). */
   private fun failed(code: String, message: String): Map<String, Any?> = mapOf(

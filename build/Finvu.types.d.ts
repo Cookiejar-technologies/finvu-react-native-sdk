@@ -351,10 +351,53 @@ export declare function isConsentError(code: string): boolean;
 export declare function isSDKError(code: string): boolean;
 /** 'otp' | 'pin' | 'sna' | 'deviceBinding' */
 export type MfaFactor = 'otp' | 'pin' | 'sna' | 'deviceBinding';
+/** PIN recovery proof methods (the factor of a pinRecovery proof step). */
+export type MfaRecoveryMethod = 'questionLinkedAccount' | 'questionPan' | 'emailOtp' | 'emailLink';
+/** Who to contact when PIN recovery is not possible. Only the keys the backend sent are set. */
+export interface MfaRecoverySupport {
+    email?: string;
+    phone?: string;
+    message?: string;
+}
 export interface MfaValidationError {
     code: string;
     message: string;
     attemptsRemaining?: number;
+    /** PIN recovery errors that carry contact details, such as noRecoveryOptions */
+    support?: MfaRecoverySupport;
+}
+/** A linked account to answer for, on a questionLinkedAccount proof step. Never carries digits. */
+export interface MfaRecoveryAccount {
+    fipId: string;
+    fiType?: string;
+    accType?: string;
+}
+/** A verified email the code or link can go to. selected marks where the current one went. */
+export interface MfaRecoveryEmail {
+    emailHash: string;
+    maskedEmail: string;
+    primary: boolean;
+    selected: boolean;
+}
+/** One answer on a questionLinkedAccount proof step: the account and its last 4 digits. */
+export interface MfaRecoveryAccountAnswer {
+    fipId: string;
+    last4: string;
+    fiType?: string;
+    accType?: string;
+}
+/**
+ * PIN recovery data on a step. On a proof step: method, availableMethods, plus accounts and
+ * minAccountsRequired (questionLinkedAccount) or emails (emailOtp, emailLink). On the new PIN
+ * step: expiresAt, when the backend sent the recovery window's deadline.
+ */
+export interface MfaRecovery {
+    method?: MfaRecoveryMethod;
+    availableMethods: MfaRecoveryMethod[];
+    accounts?: MfaRecoveryAccount[];
+    minAccountsRequired?: number;
+    emails?: MfaRecoveryEmail[];
+    expiresAt?: string;
 }
 export interface MfaError {
     code: string;
@@ -397,24 +440,39 @@ export interface MfaLoginParams {
     /** Default false. true lets the user choose the step-up factor (MfaSelectFactorStep). */
     selectFactorChoice?: boolean;
 }
-/** Ask the user for an OTP or PIN, then call submit. */
+/**
+ * Ask the user for a value, then call submit: an OTP or PIN, or during PIN recovery
+ * (purpose 'pinRecovery') the proof for factor or the new PIN.
+ */
 export interface MfaInputStep {
     action: 'input';
-    factor: 'otp' | 'pin';
+    factor: 'otp' | 'pin' | MfaRecoveryMethod;
     requirement: 'verification' | 'enrollment';
-    /** 'pinReset' during forgot PIN */
-    purpose?: 'pinReset';
+    /** 'pinRecovery' during forgot PIN */
+    purpose?: 'pinRecovery';
     /** PIN steps only */
     inputSpec?: MfaInputSpec;
     /** Set when the previous value was rejected: show the same screen with this message. */
     validationError?: MfaValidationError;
     /** OTP steps only, when the backend sends it */
     resendInfo?: MfaResendInfo;
-    submit: (value: string) => Promise<MfaStep>;
-    /** OTP steps only */
+    /**
+     * The OTP, PIN or recovery answer. On a questionLinkedAccount proof step pass one answer per
+     * account; with exactly one account, just the digits work too.
+     */
+    submit: (value: string | MfaRecoveryAccountAnswer[]) => Promise<MfaStep>;
+    /** OTP, and the emailOtp / emailLink proof steps (sends the code or link again) */
     resend?: () => Promise<MfaStep>;
-    /** PIN verification only (not during a PIN reset) */
+    /** PIN verification only. Starts PIN recovery. */
     forgotPin?: () => Promise<MfaStep>;
+    /** PIN recovery steps only */
+    recovery?: MfaRecovery;
+    /** PIN recovery steps only. Back to the PIN verification step, with no error. */
+    cancel?: () => Promise<MfaStep>;
+    /** Proof step with more than one method. Takes a value from recovery.availableMethods. */
+    switchMethod?: (method: MfaRecoveryMethod) => Promise<MfaStep>;
+    /** emailOtp / emailLink proof steps. Takes an emailHash from recovery.emails. */
+    selectEmail?: (emailHash: string) => Promise<MfaStep>;
 }
 /** Work runs without user input (SNA, device-binding prompt). Show a loader and await completion. */
 export interface MfaSilentStep {
@@ -429,8 +487,8 @@ export interface MfaSelectFactorStep {
     selectFactor: (factor: MfaFactor) => Promise<MfaStep>;
 }
 /**
- * Login finished. retry is set only when an on-device device-binding prompt failed;
- * it can be used once and resolves like a silent step's completion.
+ * Login finished. retry is never set: every device-binding failure falls back to PIN
+ * instead. It is kept for API compatibility.
  */
 export interface MfaCompleteStep {
     action: 'complete';

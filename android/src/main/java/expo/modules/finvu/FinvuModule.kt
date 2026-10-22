@@ -662,6 +662,23 @@ class FinvuModule : Module() {
       mfaBridge.retry(stepId, promise)
     }
 
+    // PIN recovery (steps with purpose 'pinRecovery')
+    AsyncFunction("mfaSubmitAccounts") { stepId: String, accounts: List<Map<String, Any?>>, promise: Promise ->
+      mfaBridge.submitAccounts(stepId, accounts, promise)
+    }
+
+    AsyncFunction("mfaCancel") { stepId: String, promise: Promise ->
+      mfaBridge.cancel(stepId, promise)
+    }
+
+    AsyncFunction("mfaSwitchMethod") { stepId: String, method: String, promise: Promise ->
+      mfaBridge.switchMethod(stepId, method, promise)
+    }
+
+    AsyncFunction("mfaSelectEmail") { stepId: String, emailHash: String, promise: Promise ->
+      mfaBridge.selectEmail(stepId, emailHash, promise)
+    }
+
     Function("registerAliases") { aliases: Map<String, String> ->
       try {
         eventTracker.registerAliases(aliases)

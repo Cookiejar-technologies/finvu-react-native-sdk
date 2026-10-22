@@ -178,6 +178,19 @@ public class FinvuModule: Module {
         AsyncFunction("mfaRetry") { (stepId: String, promise: Promise) in
             self.mfaBridge.retry(stepId: stepId, promise: promise)
         }
+        // PIN recovery (steps with purpose 'pinRecovery')
+        AsyncFunction("mfaSubmitAccounts") { (stepId: String, accounts: [[String: Any]], promise: Promise) in
+            self.mfaBridge.submitAccounts(stepId: stepId, accounts: accounts, promise: promise)
+        }
+        AsyncFunction("mfaCancel") { (stepId: String, promise: Promise) in
+            self.mfaBridge.cancel(stepId: stepId, promise: promise)
+        }
+        AsyncFunction("mfaSwitchMethod") { (stepId: String, method: String, promise: Promise) in
+            self.mfaBridge.switchMethod(stepId: stepId, method: method, promise: promise)
+        }
+        AsyncFunction("mfaSelectEmail") { (stepId: String, emailHash: String, promise: Promise) in
+            self.mfaBridge.selectEmail(stepId: stepId, emailHash: emailHash, promise: promise)
+        }
     }
     
     private func getRootViewController() -> UIViewController? {

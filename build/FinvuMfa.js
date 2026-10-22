@@ -1,4 +1,5 @@
 import FinvuModule from './FinvuModule';
+const RECOVERY_METHODS = ['questionLinkedAccount', 'questionPan', 'emailOtp', 'emailLink'];
 function failedStep(code, message) {
     return {
         action: 'complete',
@@ -29,15 +30,27 @@ function toStep(step) {
         case 'input':
             return {
                 action: 'input',
-                factor: step.factor === 'pin' ? 'pin' : 'otp',
+                factor: step.factor === 'pin' || RECOVERY_METHODS.includes(step.factor ?? '')
+                    ? step.factor
+                    : 'otp',
                 requirement: step.requirement === 'enrollment' ? 'enrollment' : 'verification',
-                purpose: step.purpose === 'pinReset' ? 'pinReset' : undefined,
+                purpose: step.purpose === 'pinRecovery' ? 'pinRecovery' : undefined,
                 inputSpec: step.pinLength != null ? { pinLength: step.pinLength } : undefined,
                 validationError: step.validationError ?? undefined,
                 resendInfo: step.resendInfo ?? undefined,
-                submit: (value) => call(() => FinvuModule.mfaSubmit(stepId, value)),
+                submit: (value) => Array.isArray(value)
+                    ? call(() => FinvuModule.mfaSubmitAccounts(stepId, value))
+                    : call(() => FinvuModule.mfaSubmit(stepId, value)),
                 resend: step.hasResend ? () => call(() => FinvuModule.mfaResend(stepId)) : undefined,
                 forgotPin: step.hasForgotPin ? () => call(() => FinvuModule.mfaForgotPin(stepId)) : undefined,
+                recovery: step.recovery ?? undefined,
+                cancel: step.hasCancel ? () => call(() => FinvuModule.mfaCancel(stepId)) : undefined,
+                switchMethod: step.hasSwitchMethod
+                    ? (method) => call(() => FinvuModule.mfaSwitchMethod(stepId, method))
+                    : undefined,
+                selectEmail: step.hasSelectEmail
+                    ? (emailHash) => call(() => FinvuModule.mfaSelectEmail(stepId, emailHash))
+                    : undefined,
             };
         case 'silent':
             return {
@@ -76,7 +89,7 @@ function toStep(step) {
     }
 }
 /**
- * Step-based MFA login (OTP, SNA, PIN, device binding), backed by the native SDKs.
+ * Step-based MFA login (OTP, SNA, PIN with PIN recovery, device binding), backed by the native SDKs.
  *
  * ```ts
  * let step = await mfaClient.login({ mobileNumber: '9876543210', consentHandle });

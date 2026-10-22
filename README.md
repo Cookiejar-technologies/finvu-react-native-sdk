@@ -29,8 +29,8 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 ## Latest SDK Version
 
-- React Native SDK: v2.0.1 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
-- Android SDK: 2.0.1 · iOS FinvuSDK: 2.0.1
+- React Native SDK: v2.1.0 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
+- Android SDK: 2.1.0 · iOS FinvuSDK: 2.1.0
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ npm install @io.github.cookiejar-technologies/finvu-react-native-sdk
 platform :ios, '16.0'
 
 # Add Finvu SDK dependency
-pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.0.1'
+pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.1.0'
 ```
 
 5. Build & Run React Native app:
@@ -151,16 +151,21 @@ let step: MfaStep = await mfaClient.login({ mobileNumber: '9876543210', consentH
 async function render(step: MfaStep) {
   switch (step.action) {
     case 'input':
-      // OTP or PIN screen. Title from step.factor / step.requirement / step.purpose:
-      //  otp + purpose 'pinReset' -> "Enter the OTP to reset your PIN"
-      //  otp                      -> "Enter the OTP sent to your mobile"
-      //  pin + purpose 'pinReset' -> "Set a new PIN"
-      //  pin + 'enrollment'       -> "Create a PIN"
-      //  pin + 'verification'     -> "Enter your PIN"
-      // Show step.validationError?.message (and attemptsRemaining) when present.
-      // Submit:      render(await step.submit(value))
-      // Resend:      if (step.resend)    render(await step.resend())     // OTP only; timer from step.resendInfo
+      // Input screen. Title from step.factor / step.requirement / step.purpose:
+      //  otp                                   -> "Enter the OTP sent to your mobile"
+      //  pin + 'enrollment'                    -> "Create a PIN"
+      //  pin + 'verification'                  -> "Enter your PIN"
+      //  purpose 'pinRecovery' (forgot PIN):
+      //    questionLinkedAccount               -> "Last 4 digits of your account" (step.recovery.accounts)
+      //    questionPan                         -> "Last 4 characters of your PAN"
+      //    emailOtp / emailLink                -> "Enter the code we emailed" (step.recovery.emails, masked)
+      //    pin + 'enrollment'                  -> "Set a new PIN" (step.inputSpec.pinLength digits)
+      // Show step.validationError?.message (and attemptsRemaining) when present; if it has
+      // support (e.g. noRecoveryOptions), show the contact details.
+      // Submit:      render(await step.submit(value))       // linked accounts: submit([{ fipId, last4 }])
+      // Resend:      if (step.resend)    render(await step.resend())     // OTP and email recovery
       // Forgot PIN:  if (step.forgotPin) render(await step.forgotPin())  // enter-PIN screen only
+      // Recovery:    step.cancel / step.switchMethod(method) / step.selectEmail(emailHash) when set
       break;
     case 'silent':
       // SNA or device binding: show a loader; the SDK shows any biometric prompt itself

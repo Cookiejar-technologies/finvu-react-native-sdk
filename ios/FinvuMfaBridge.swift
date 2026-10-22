@@ -65,6 +65,35 @@ final class FinvuMfaBridge {
         }
     }
 
+    func submitAccounts(stepId: String, accounts: [[String: Any]], promise: Promise) {
+        let answers = accounts.map {
+            RecoveryAccountAnswer(fipId: $0["fipId"] as? String ?? "", last4: $0["last4"] as? String ?? "",
+                                  fiType: $0["fiType"] as? String, accType: $0["accType"] as? String)
+        }
+        withStep(stepId, as: MfaInputStep.self, promise) { await $0.submit(accounts: answers) }
+    }
+
+    func cancel(stepId: String, promise: Promise) {
+        withStep(stepId, as: MfaInputStep.self, promise) { step in
+            guard let cancel = step.cancel else { return nil }
+            return await cancel()
+        }
+    }
+
+    func switchMethod(stepId: String, method: String, promise: Promise) {
+        withStep(stepId, as: MfaInputStep.self, promise) { step in
+            guard let switchMethod = step.switchMethod else { return nil }
+            return await switchMethod(method)
+        }
+    }
+
+    func selectEmail(stepId: String, emailHash: String, promise: Promise) {
+        withStep(stepId, as: MfaInputStep.self, promise) { step in
+            guard let selectEmail = step.selectEmail else { return nil }
+            return await selectEmail(emailHash)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Runs `block` on the step with `stepId`; a nil result means the action is not available on it.
@@ -99,7 +128,10 @@ final class FinvuMfaBridge {
             "action": step.action,
             "hasResend": false,
             "hasForgotPin": false,
-            "hasRetry": false
+            "hasRetry": false,
+            "hasCancel": false,
+            "hasSwitchMethod": false,
+            "hasSelectEmail": false
         ]
         switch step {
         case let input as MfaInputStep:
@@ -110,6 +142,13 @@ final class FinvuMfaBridge {
             if let error = input.validationError {
                 var errorDict: [String: Any] = ["code": error.code, "message": error.message]
                 if let attempts = error.attemptsRemaining { errorDict["attemptsRemaining"] = attempts }
+                if let support = error.support {
+                    var supportDict: [String: Any] = [:]
+                    if let email = support.email { supportDict["email"] = email }
+                    if let phone = support.phone { supportDict["phone"] = phone }
+                    if let message = support.message { supportDict["message"] = message }
+                    errorDict["support"] = supportDict
+                }
                 dict["validationError"] = errorDict
             }
             if let info = input.resendInfo {
@@ -120,6 +159,10 @@ final class FinvuMfaBridge {
             }
             dict["hasResend"] = input.resend != nil
             dict["hasForgotPin"] = input.forgotPin != nil
+            if let recovery = input.recovery { dict["recovery"] = recoveryDictionary(recovery) }
+            dict["hasCancel"] = input.cancel != nil
+            dict["hasSwitchMethod"] = input.switchMethod != nil
+            dict["hasSelectEmail"] = input.selectEmail != nil
         case let silent as MfaSilentStep:
             dict["factor"] = silent.factor
         case let select as MfaSelectFactorStep:
@@ -140,6 +183,27 @@ final class FinvuMfaBridge {
         default:
             return failed(code: "unexpectedStep", message: "Unexpected MFA step")
         }
+        return dict
+    }
+
+    private func recoveryDictionary(_ recovery: RecoveryInfo) -> [String: Any] {
+        var dict: [String: Any] = ["availableMethods": recovery.availableMethods]
+        if let method = recovery.method { dict["method"] = method }
+        if let accounts = recovery.accounts {
+            dict["accounts"] = accounts.map { account -> [String: Any] in
+                var entry: [String: Any] = ["fipId": account.fipId]
+                if let fiType = account.fiType { entry["fiType"] = fiType }
+                if let accType = account.accType { entry["accType"] = accType }
+                return entry
+            }
+        }
+        if let minAccounts = recovery.minAccountsRequired { dict["minAccountsRequired"] = minAccounts }
+        if let emails = recovery.emails {
+            dict["emails"] = emails.map {
+                ["emailHash": $0.emailHash, "maskedEmail": $0.maskedEmail, "primary": $0.primary, "selected": $0.selected] as [String: Any]
+            }
+        }
+        if let expiresAt = recovery.expiresAt { dict["expiresAt"] = expiresAt }
         return dict
     }
 
