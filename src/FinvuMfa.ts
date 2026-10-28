@@ -29,12 +29,14 @@ type NativeMfaStep = {
   resendInfo?: { resendAfterSeconds?: number; resendsRemaining?: number };
   availableFactors?: string[];
   resultStatus?: string;
-  session?: { userId?: string; sessionId?: string; csid?: string };
+  session?: { userId?: string; sessionId?: string; csid?: string; newUser?: boolean; hasLinkedAccounts?: boolean };
   error?: { code: string; message: string };
   hasResend: boolean;
   hasForgotPin: boolean;
   hasRetry: boolean;
   recovery?: MfaRecovery;
+  newUser?: boolean;
+  hasLinkedAccounts?: boolean;
   hasCancel?: boolean;
   hasSwitchMethod?: boolean;
   hasSelectEmail?: boolean;
@@ -68,8 +70,13 @@ async function call(nativeCall: () => Promise<NativeMfaStep>): Promise<MfaStep> 
   }
 }
 
+// The current login's newUser / hasLinkedAccounts, read from the steps as they arrive
+let loginInfo: { newUser?: boolean; hasLinkedAccounts?: boolean } = {};
+
 function toStep(step: NativeMfaStep): MfaStep {
   const stepId = step.stepId;
+  if (step.newUser != null) loginInfo.newUser = step.newUser;
+  if (step.hasLinkedAccounts != null) loginInfo.hasLinkedAccounts = step.hasLinkedAccounts;
   switch (step.action) {
     case 'input':
       return {
@@ -149,7 +156,22 @@ function toStep(step: NativeMfaStep): MfaStep {
  * pass `finvuAuthSNAConfig` to `initializeWith`.
  */
 export const mfaClient = {
+  /**
+   * Whether the user logging in is new. Known as soon as login() returns its first step,
+   * so the first screen can greet a new or returning user. undefined before that, or when
+   * Finvu did not send it.
+   */
+  get newUser(): boolean | undefined {
+    return loginInfo.newUser;
+  },
+
+  /** Whether the user already has linked accounts. Same rules as newUser. */
+  get hasLinkedAccounts(): boolean | undefined {
+    return loginInfo.hasLinkedAccounts;
+  },
+
   login(params: MfaLoginParams): Promise<MfaStep> {
+    loginInfo = {};
     return call(() => FinvuModule.mfaLogin(withoutUndefined({
       mobileNumber: params.mobileNumber,
       username: params.username,
@@ -161,6 +183,7 @@ export const mfaClient = {
       useEncConsent: params.useEncConsent ?? true,
       finalizeSession: params.finalizeSession,
       selectFactorChoice: params.selectFactorChoice ?? false,
+      emailId: params.emailId,
     })));
   },
 };

@@ -29,8 +29,8 @@ Always call `logout()` and `disconnect()` when the user exits the AA journey, re
 
 ## Latest SDK Version
 
-- React Native SDK: v2.1.0 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
-- Android SDK: 2.1.0 · iOS FinvuSDK: 2.1.0
+- React Native SDK: v2.1.1 (`@io.github.cookiejar-technologies/finvu-react-native-sdk` on npm)
+- Android SDK: 2.1.1 · iOS FinvuSDK: 2.1.1
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ npm install @io.github.cookiejar-technologies/finvu-react-native-sdk
 platform :ios, '16.0'
 
 # Add Finvu SDK dependency
-pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.1.0'
+pod 'FinvuSDK', :git => 'https://github.com/Cookiejar-technologies/finvu_ios_sdk.git', :tag => '2.1.1'
 ```
 
 5. Build & Run React Native app:

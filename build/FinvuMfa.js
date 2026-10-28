@@ -24,8 +24,14 @@ async function call(nativeCall) {
         return failedStep(error?.code, error?.message);
     }
 }
+// The current login's newUser / hasLinkedAccounts, read from the steps as they arrive
+let loginInfo = {};
 function toStep(step) {
     const stepId = step.stepId;
+    if (step.newUser != null)
+        loginInfo.newUser = step.newUser;
+    if (step.hasLinkedAccounts != null)
+        loginInfo.hasLinkedAccounts = step.hasLinkedAccounts;
     switch (step.action) {
         case 'input':
             return {
@@ -100,7 +106,20 @@ function toStep(step) {
  * pass `finvuAuthSNAConfig` to `initializeWith`.
  */
 export const mfaClient = {
+    /**
+     * Whether the user logging in is new. Known as soon as login() returns its first step,
+     * so the first screen can greet a new or returning user. undefined before that, or when
+     * Finvu did not send it.
+     */
+    get newUser() {
+        return loginInfo.newUser;
+    },
+    /** Whether the user already has linked accounts. Same rules as newUser. */
+    get hasLinkedAccounts() {
+        return loginInfo.hasLinkedAccounts;
+    },
     login(params) {
+        loginInfo = {};
         return call(() => FinvuModule.mfaLogin(withoutUndefined({
             mobileNumber: params.mobileNumber,
             username: params.username,
@@ -112,6 +131,7 @@ export const mfaClient = {
             useEncConsent: params.useEncConsent ?? true,
             finalizeSession: params.finalizeSession,
             selectFactorChoice: params.selectFactorChoice ?? false,
+            emailId: params.emailId,
         })));
     },
 };

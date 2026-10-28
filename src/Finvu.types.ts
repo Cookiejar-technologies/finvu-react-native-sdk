@@ -507,10 +507,13 @@ export interface MfaError {
   message: string;
 }
 
+/** newUser and hasLinkedAccounts come from the login's first response (Y / N); absent when not sent. */
 export interface MfaSession {
   userId?: string;
   sessionId?: string;
   csid?: string;
+  newUser?: boolean;
+  hasLinkedAccounts?: boolean;
 }
 
 export type MfaResult =
@@ -544,6 +547,8 @@ export interface MfaLoginParams {
   finalizeSession?: boolean;
   /** Default false. true lets the user choose the step-up factor (MfaSelectFactorStep). */
   selectFactorChoice?: boolean;
+  /** The user's email ID, sent with the login. Optional. */
+  emailId?: string;
 }
 
 /**

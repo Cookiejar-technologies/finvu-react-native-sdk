@@ -27,7 +27,8 @@ final class FinvuMfaBridge {
             ),
             useEncConsent: params["useEncConsent"] as? Bool ?? true,
             finalizeSession: params["finalizeSession"] as? Bool,
-            selectFactorChoice: params["selectFactorChoice"] as? Bool ?? false
+            selectFactorChoice: params["selectFactorChoice"] as? Bool ?? false,
+            emailId: params["emailId"] as? String
         )
         run(promise) { await FinvuManager.shared.mfaClient.login(loginParams) }
     }
@@ -174,6 +175,8 @@ final class FinvuMfaBridge {
                 if let userId = session.userId { sessionDict["userId"] = userId }
                 if let sessionId = session.sessionId { sessionDict["sessionId"] = sessionId }
                 if let csid = session.csid { sessionDict["csid"] = csid }
+                if let newUser = session.newUser { sessionDict["newUser"] = newUser }
+                if let hasLinkedAccounts = session.hasLinkedAccounts { sessionDict["hasLinkedAccounts"] = hasLinkedAccounts }
                 dict["session"] = sessionDict
             }
             if let error = complete.result.error {
@@ -183,6 +186,9 @@ final class FinvuMfaBridge {
         default:
             return failed(code: "unexpectedStep", message: "Unexpected MFA step")
         }
+        // Every step carries the login's newUser / hasLinkedAccounts, known from the first step on
+        if let newUser = FinvuManager.shared.mfaClient.newUser { dict["newUser"] = newUser }
+        if let hasLinkedAccounts = FinvuManager.shared.mfaClient.hasLinkedAccounts { dict["hasLinkedAccounts"] = hasLinkedAccounts }
         return dict
     }
 

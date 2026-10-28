@@ -47,7 +47,8 @@ internal class FinvuMfaBridge {
       ),
       useEncConsent = params["useEncConsent"] as? Boolean ?: true,
       finalizeSession = params["finalizeSession"] as? Boolean,
-      selectFactorChoice = params["selectFactorChoice"] as? Boolean ?: false
+      selectFactorChoice = params["selectFactorChoice"] as? Boolean ?: false,
+      emailId = params["emailId"] as? String
     )
     run(promise) { FinvuManager.shared.mfaClient.login(loginParams) }
   }
@@ -159,7 +160,10 @@ internal class FinvuMfaBridge {
       is MfaCompleteStep -> mapOf(
         "resultStatus" to step.result.status,
         "session" to step.result.session?.let {
-          mapOf("userId" to it.userId, "sessionId" to it.sessionId, "csid" to it.csid)
+          mapOf(
+            "userId" to it.userId, "sessionId" to it.sessionId, "csid" to it.csid,
+            "newUser" to it.newUser, "hasLinkedAccounts" to it.hasLinkedAccounts
+          )
             .filterValues { value -> value != null }
         },
         "error" to step.result.error?.let { mapOf("code" to it.code, "message" to it.message) },
@@ -168,7 +172,10 @@ internal class FinvuMfaBridge {
         "hasRetry" to (step.retry != null)
       )
     }
-    return (mapOf("stepId" to stepId, "action" to step.action) + map).filterValues { it != null }
+    // Every step carries the login's newUser / hasLinkedAccounts, known from the first step on
+    val client = FinvuManager.shared.mfaClient
+    val loginInfo = mapOf("newUser" to client.newUser, "hasLinkedAccounts" to client.hasLinkedAccounts)
+    return (mapOf("stepId" to stepId, "action" to step.action) + map + loginInfo).filterValues { it != null }
   }
 
   private fun recoveryMap(recovery: RecoveryInfo): Map<String, Any?> = mapOf(

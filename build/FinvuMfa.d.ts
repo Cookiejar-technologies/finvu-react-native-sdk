@@ -11,6 +11,14 @@ import type { MfaLoginParams, MfaStep } from './Finvu.types';
  * pass `finvuAuthSNAConfig` to `initializeWith`.
  */
 export declare const mfaClient: {
+    /**
+     * Whether the user logging in is new. Known as soon as login() returns its first step,
+     * so the first screen can greet a new or returning user. undefined before that, or when
+     * Finvu did not send it.
+     */
+    readonly newUser: boolean | undefined;
+    /** Whether the user already has linked accounts. Same rules as newUser. */
+    readonly hasLinkedAccounts: boolean | undefined;
     login(params: MfaLoginParams): Promise<MfaStep>;
 };
 //# sourceMappingURL=FinvuMfa.d.ts.map
